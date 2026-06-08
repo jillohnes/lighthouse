@@ -1,0 +1,6 @@
+brand,region,market,date,channel,venue_type,retailer_type,spend,return_value,roi,samples,content_reach,py_spend_change,py_roi_change
+Tanqueray,Northeast,Boston,2024-01-15,on_premise,Bars & Nightlife,,125000,108750,87,1200,850000,12.4,4.2
+Tanqueray,Northeast,Boston,2024-02-10,on_premise,Restaurants,,98000,83300,85,950,720000,11.8,3.8
+Captain Morgan,Southeast,Miami,2024-01-20,off_premise,,Grocery,210000,184800,88,0,1200000,14.2,5.1
+Johnnie Walker,Midwest,Chicago,2024-03-05,on_premise,Sports & Events,,175000,166250,95,2100,1500000,15.6,6.3
+Smirnoff,West,Los Angeles,2024-02-28,off_premise,,Liquor,142000,129220,91,0,980000,9.6,2.9
