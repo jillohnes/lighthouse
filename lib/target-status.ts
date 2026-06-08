@@ -11,6 +11,14 @@ export function getTargetStatus(
   return "slightly-below";
 }
 
+export function getBudgetStatus(actual: number, target: number): TargetStatus {
+  if (target <= 0) return "above";
+  const percentOfTarget = (actual / target) * 100;
+  if (percentOfTarget <= 100) return "above";
+  if (percentOfTarget > 130) return "well-below";
+  return "slightly-below";
+}
+
 export const STATUS_STYLES: Record<
   TargetStatus,
   { fill: string; bar: string; text: string }

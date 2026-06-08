@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDashboardData, getDefaultFilters } from "@/lib/data";
+import { getDefaultFilters } from "@/lib/data";
 import { getDashboardDataFromSupabase } from "@/lib/queries/dashboard";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
-import type { Brand, DashboardFilters, Market, Region } from "@/lib/types";
+import type { DashboardFilters } from "@/lib/types";
+
+function parseList(param: string | null): string[] {
+  if (!param) return [];
+  return param.split(",").map((s) => s.trim()).filter(Boolean);
+}
 
 function parseFilters(searchParams: URLSearchParams): DashboardFilters {
   const defaults = getDefaultFilters();
 
   return {
-    brand: (searchParams.get("brand") as Brand) || defaults.brand,
-    region: (searchParams.get("region") as Region) || defaults.region,
-    market: (searchParams.get("market") as Market) || defaults.market,
+    activationType: parseList(searchParams.get("activationType")),
+    region: parseList(searchParams.get("region")),
+    market: parseList(searchParams.get("market")),
     startDate: searchParams.get("startDate")
       ? new Date(searchParams.get("startDate")!)
       : defaults.startDate,
@@ -31,16 +36,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      source: "mock",
-      data: getDashboardData(filters),
-    });
+    return NextResponse.json({ source: "empty", data: null });
   } catch (error) {
     console.error("Dashboard API error:", error);
-    return NextResponse.json({
-      source: "mock",
-      data: getDashboardData(filters),
-      warning: "Fell back to mock data due to a database error.",
-    });
+    return NextResponse.json(
+      { source: "error", data: null, warning: "Failed to load dashboard data." },
+      { status: 500 },
+    );
   }
 }

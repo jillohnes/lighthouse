@@ -59,7 +59,7 @@ export function TargetsPacing({ targets, pacingPercent }: TargetsPacingProps) {
         Targets & Pacing Summary
       </h3>
 
-      <div className="flex items-center gap-8">
+      <div className="flex flex-wrap items-center gap-8">
         {targets.map((target) => {
           const colors = STATUS_STYLES[target.status];
 

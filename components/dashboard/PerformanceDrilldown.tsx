@@ -22,7 +22,13 @@ interface PerformanceDrilldownProps {
   breakdownLabel: string;
 }
 
-const METRICS = ["Spend", "ROI %", "Samples", "Content Reach"] as const;
+const METRICS = ["Reach", "Impact", "Result"] as const;
+
+const METRIC_CONFIG = {
+  Reach: { bar: "reach", line: "impact", barName: "Reach", lineName: "Avg Impact", barFmt: (v: number) => `${v}`, lineFmt: (v: number) => `${v}` },
+  Impact: { bar: "impact", line: "result", barName: "Impact", lineName: "Result", barFmt: (v: number) => `${v}`, lineFmt: (v: number) => `${(v / 1000).toFixed(0)}K` },
+  Result: { bar: "result", line: "reach", barName: "Result", lineName: "Reach", barFmt: (v: number) => `${(v / 1000).toFixed(0)}K`, lineFmt: (v: number) => `${v}` },
+} as const;
 
 export function PerformanceDrilldown({
   title,
@@ -30,7 +36,8 @@ export function PerformanceDrilldown({
   breakdown,
   breakdownLabel,
 }: PerformanceDrilldownProps) {
-  const [activeMetric, setActiveMetric] = useState<(typeof METRICS)[number]>("Spend");
+  const [activeMetric, setActiveMetric] = useState<(typeof METRICS)[number]>("Reach");
+  const config = METRIC_CONFIG[activeMetric];
 
   return (
     <div className="rounded-lg border border-[#4A2C1A]/8 bg-white p-5 shadow-sm">
@@ -67,7 +74,7 @@ export function PerformanceDrilldown({
 
       <div className="grid grid-cols-[1fr_280px] gap-4">
         <div className="h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <ComposedChart data={monthly} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#4A2C1A10" vertical={false} />
               <XAxis
@@ -77,19 +84,19 @@ export function PerformanceDrilldown({
                 tickLine={false}
               />
               <YAxis
-                yAxisId="spend"
+                yAxisId="bar"
                 tick={{ fontSize: 11, fill: "#4A2C1A80" }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `$${v}K`}
+                tickFormatter={config.barFmt}
               />
               <YAxis
-                yAxisId="roi"
+                yAxisId="line"
                 orientation="right"
                 tick={{ fontSize: 11, fill: "#4A2C1A80" }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `${v}%`}
+                tickFormatter={config.lineFmt}
               />
               <Tooltip
                 contentStyle={{
@@ -104,18 +111,18 @@ export function PerformanceDrilldown({
                 iconSize={8}
               />
               <Bar
-                yAxisId="spend"
-                dataKey="spend"
-                name="Spend ($K)"
+                yAxisId="bar"
+                dataKey={config.bar}
+                name={config.barName}
                 fill="#4A2C1A"
                 radius={[3, 3, 0, 0]}
                 barSize={28}
               />
               <Line
-                yAxisId="roi"
+                yAxisId="line"
                 type="monotone"
-                dataKey="roi"
-                name="ROI (%)"
+                dataKey={config.line}
+                name={config.lineName}
                 stroke="#B5455C"
                 strokeWidth={2}
                 dot={{ r: 4, fill: "#B5455C", strokeWidth: 0 }}
@@ -132,17 +139,17 @@ export function PerformanceDrilldown({
             <thead>
               <tr className="border-b border-[#4A2C1A]/10 text-left text-[#4A2C1A]/50">
                 <th className="pb-2 font-medium">Type</th>
-                <th className="pb-2 font-medium">Spend ($M)</th>
-                <th className="pb-2 font-medium">ROI (%)</th>
-                <th className="pb-2 font-medium">vs PY</th>
+                <th className="pb-2 font-medium">Reach</th>
+                <th className="pb-2 font-medium">Impact</th>
+                <th className="pb-2 font-medium">Result</th>
               </tr>
             </thead>
             <tbody>
               {breakdown.map((row) => (
                 <tr key={row.name} className="border-b border-[#4A2C1A]/5">
                   <td className="py-2 font-medium text-[#3B2314]">{row.name}</td>
-                  <td className="py-2 text-[#4A2C1A]/80">{row.spend.toFixed(1)}</td>
-                  <td className="py-2 text-[#4A2C1A]/80">{row.roi}%</td>
+                  <td className="py-2 text-[#4A2C1A]/80">{row.reach.toLocaleString()}</td>
+                  <td className="py-2 text-[#4A2C1A]/80">{row.impact}</td>
                   <td className="py-2">
                     <span
                       className={`inline-flex items-center gap-0.5 font-medium ${
@@ -154,8 +161,7 @@ export function PerformanceDrilldown({
                       ) : (
                         <TrendingDown className="h-3 w-3" />
                       )}
-                      {row.change >= 0 ? "+" : ""}
-                      {row.change.toFixed(1)}%
+                      {row.result.toLocaleString()}
                     </span>
                   </td>
                 </tr>

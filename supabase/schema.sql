@@ -31,18 +31,20 @@ create table if not exists kpi_targets (
   label text not null
 );
 
--- Default targets (edit to match your program goals)
+-- Default targets (edit in Settings UI or here)
 insert into kpi_targets (metric_key, target_value, label) values
-  ('spend', 3500000, 'Spend to Date'),
-  ('return_value', 3000000, 'Return Value'),
-  ('roi', 90, 'ROI to Date'),
-  ('samples', 25000, 'TTL Samples'),
-  ('content_reach', 15000000, 'TTL Content Reach'),
-  ('active_programs', 15, 'Active Programs'),
-  ('markets', 10, 'Markets'),
-  ('on_premise_roi', 90, 'On Premise ROI Target'),
-  ('off_premise_roi', 85, 'Off Premise ROI Target'),
-  ('total_spend', 4500000, 'Total Spend Target')
+  ('htc_reach', 1200, 'Reach (People Engaged) (Per Activation)'),
+  ('htc_impact', 350, 'Impact (People Sampled) (Per Activation)'),
+  ('htc_result', 150000, 'Results (Sales During Activation) (Per Activation)'),
+  ('htc_budget', 2500, 'Avg Activation Cost'),
+  ('brand_experience_reach', 1800, 'Reach (People Engaged) (Per Activation)'),
+  ('brand_experience_impact', 450, 'Impact (People Sampled) (Per Activation)'),
+  ('brand_experience_result', 220000, 'Results (Sales During Activation) (Per Activation)'),
+  ('brand_experience_budget', 4500, 'Avg Activation Cost'),
+  ('digital_sampling_reach', 1500000, 'Reach (QR Code Scans) (Total Program)'),
+  ('digital_sampling_impact', 500000, 'Impact (Redemptions) (Total Program)'),
+  ('digital_sampling_result', 1500000, 'Results (Sales) (Total Program)'),
+  ('digital_sampling_budget', 500000, 'Total Cost Budget')
 on conflict (metric_key) do nothing;
 
 -- Allow service role full access (tighten with RLS before production)

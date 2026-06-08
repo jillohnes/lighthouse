@@ -1,37 +1,17 @@
-export type Brand =
-  | "All Brands"
-  | "Baileys"
-  | "Buchanan's"
-  | "Bulleit"
-  | "Captain Morgan"
-  | "Casamigos"
-  | "Crown Royal"
-  | "Deleon"
-  | "DonJulio"
-  | "Guinness"
-  | "Johnnie Walker"
-  | "Ketel One"
-  | "Mr Black"
-  | "Smirnoff"
-  | "Tanqueray";
-export type Region = "All Regions" | "Northeast" | "Southeast" | "Midwest" | "West";
-export type Market =
-  | "All Markets"
-  | "Boston"
-  | "New York"
-  | "Miami"
-  | "Atlanta"
-  | "Chicago"
-  | "Denver"
-  | "Los Angeles"
-  | "Seattle";
-
 export interface DashboardFilters {
-  brand: Brand;
-  region: Region;
-  market: Market;
+  activationType: string[];
+  region: string[];
+  market: string[];
   startDate: Date;
   endDate: Date;
+}
+
+export interface FilterOptions {
+  activationTypes: string[];
+  regions: string[];
+  markets: string[];
+  marketsByRegion: Record<string, string[]>;
+  dateRange: { min: string; max: string };
 }
 
 export type TargetStatus = "above" | "slightly-below" | "well-below";
@@ -49,14 +29,16 @@ export interface KpiMetric {
 
 export interface MonthlyPerformance {
   month: string;
-  spend: number;
-  roi: number;
+  reach: number;
+  impact: number;
+  result: number;
 }
 
 export interface BreakdownRow {
   name: string;
-  spend: number;
-  roi: number;
+  reach: number;
+  impact: number;
+  result: number;
   change: number;
 }
 
@@ -79,17 +61,17 @@ export interface AiInsight {
 
 export interface DashboardData {
   kpis: KpiMetric[];
-  onPremise: {
+  byActivationType: {
     monthly: MonthlyPerformance[];
     breakdown: BreakdownRow[];
   };
-  offPremise: {
+  byLocationType: {
     monthly: MonthlyPerformance[];
     breakdown: BreakdownRow[];
   };
   targets: TargetGauge[];
   pacingPercent: number;
   insights: AiInsight[];
-  activePrograms: number;
+  totalActivations: number;
   markets: number;
 }

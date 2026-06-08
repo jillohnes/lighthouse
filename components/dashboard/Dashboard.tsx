@@ -3,30 +3,36 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Share2 } from "lucide-react";
 import { getDefaultFilters } from "@/lib/data";
-import type { DashboardData, DashboardFilters } from "@/lib/types";
+import type { DashboardData, DashboardFilters, FilterOptions } from "@/lib/types";
+import { AppShell } from "@/components/AppShell";
 import { AiInsights } from "./AiInsights";
 import { FilterBar } from "./FilterBar";
 import { KpiCards } from "./KpiCards";
 import { PerformanceDrilldown } from "./PerformanceDrilldown";
-import { Sidebar } from "./Sidebar";
 import { TargetsPacing } from "./TargetsPacing";
 
 const SUB_NAV_TABS = [
   "Overview",
-  "On Premise",
-  "Off Premise",
+  "By Activation Type",
+  "By Location Type",
   "Targets & Pacing",
   "Historical Performance",
 ];
 
 function buildQueryString(filters: DashboardFilters): string {
   const params = new URLSearchParams({
-    brand: filters.brand,
-    region: filters.region,
-    market: filters.market,
     startDate: filters.startDate.toISOString().slice(0, 10),
     endDate: filters.endDate.toISOString().slice(0, 10),
   });
+  if (filters.activationType.length) {
+    params.set("activationType", filters.activationType.join(","));
+  }
+  if (filters.region.length) {
+    params.set("region", filters.region.join(","));
+  }
+  if (filters.market.length) {
+    params.set("market", filters.market.join(","));
+  }
   return params.toString();
 }
 
@@ -34,55 +40,87 @@ export function Dashboard() {
   const [filters, setFilters] = useState<DashboardFilters>(getDefaultFilters);
   const [activeTab, setActiveTab] = useState("Overview");
   const [data, setData] = useState<DashboardData | null>(null);
-  const [dataSource, setDataSource] = useState<"mock" | "supabase">("mock");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (currentFilters: DashboardFilters) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/dashboard?${buildQueryString(currentFilters)}`);
       const json = await res.json();
-      setData(json.data);
-      setDataSource(json.source);
+      if (!json.data) {
+        setData(null);
+        setError("No data found for the selected filters. Try widening your date range or filters.");
+      } else {
+        setData(json.data);
+      }
     } catch {
       setData(null);
+      setError("Failed to load dashboard data.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    fetch("/api/filters")
+      .then((res) => res.json())
+      .then((json: { options?: FilterOptions }) => {
+        if (json.options?.dateRange) {
+          setFilters((prev) => ({
+            ...prev,
+            startDate: new Date(json.options!.dateRange.min + "T00:00:00"),
+            endDate: new Date(json.options!.dateRange.max + "T00:00:00"),
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     fetchData(filters);
   }, [filters, fetchData]);
 
-  function updateFilter<K extends keyof DashboardFilters>(
-    key: K,
-    value: DashboardFilters[K],
-  ) {
+  function applyFilterUpdates(updates: Partial<DashboardFilters>) {
     setFilters((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === "startDate" && (value as Date) > next.endDate) {
-        next.endDate = value as Date;
+      const next = { ...prev, ...updates };
+      if (
+        updates.startDate &&
+        updates.startDate > next.endDate
+      ) {
+        next.endDate = updates.startDate;
       }
-      if (key === "endDate" && (value as Date) < next.startDate) {
-        next.startDate = value as Date;
+      if (
+        updates.endDate &&
+        updates.endDate < next.startDate
+      ) {
+        next.startDate = updates.endDate;
       }
       return next;
     });
   }
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-[#F5F0E8]">
-      <Sidebar />
+  function updateFilter<K extends keyof DashboardFilters>(
+    key: K,
+    value: DashboardFilters[K],
+  ) {
+    applyFilterUpdates({ [key]: value } as Partial<DashboardFilters>);
+  }
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+  return (
+    <AppShell activeNav="Dashboard">
         <header className="shrink-0 border-b border-[#4A2C1A]/10 bg-[#F5F0E8] px-6 py-4">
           <div className="flex items-center justify-between gap-6">
             <h2 className="shrink-0 text-xl font-bold text-[#3B2314]">
               Trade Program Dashboard
             </h2>
 
-            <FilterBar filters={filters} onChange={updateFilter} />
+            <FilterBar
+              filters={filters}
+              onChange={updateFilter}
+              onBatchChange={applyFilterUpdates}
+            />
 
             <div className="flex shrink-0 items-center gap-2">
               <button
@@ -102,10 +140,8 @@ export function Dashboard() {
             </div>
           </div>
 
-          {dataSource === "mock" && !loading && (
-            <p className="mt-2 text-xs text-amber-700">
-              Showing sample data — connect Supabase and import your Excel file to see live data.
-            </p>
+          {error && !loading && (
+            <p className="mt-2 text-xs text-amber-700">{error}</p>
           )}
 
           <div className="mt-4 flex gap-2">
@@ -127,11 +163,11 @@ export function Dashboard() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          {loading || !data ? (
+          {loading ? (
             <div className="flex h-64 items-center justify-center text-sm text-[#4A2C1A]/60">
               Loading dashboard...
             </div>
-          ) : (
+          ) : data ? (
             <>
               <div className="mb-5">
                 <KpiCards kpis={data.kpis} />
@@ -140,16 +176,16 @@ export function Dashboard() {
               <div className="flex items-start gap-5">
                 <div className="min-w-0 flex-1 space-y-5">
                   <PerformanceDrilldown
-                    title="On Premise Performance Drill Down"
-                    monthly={data.onPremise.monthly}
-                    breakdown={data.onPremise.breakdown}
-                    breakdownLabel="By Venue Type"
+                    title="Performance by Activation Type"
+                    monthly={data.byActivationType.monthly}
+                    breakdown={data.byActivationType.breakdown}
+                    breakdownLabel="By Activation Type"
                   />
                   <PerformanceDrilldown
-                    title="Off Premise Performance Drill Down"
-                    monthly={data.offPremise.monthly}
-                    breakdown={data.offPremise.breakdown}
-                    breakdownLabel="By Retailer Type"
+                    title="Performance by Location Type"
+                    monthly={data.byLocationType.monthly}
+                    breakdown={data.byLocationType.breakdown}
+                    breakdownLabel="By Location Type"
                   />
                   <TargetsPacing
                     targets={data.targets}
@@ -162,9 +198,12 @@ export function Dashboard() {
                 </div>
               </div>
             </>
+          ) : (
+            <div className="flex h-64 items-center justify-center text-sm text-[#4A2C1A]/60">
+              {error ?? "No data available."}
+            </div>
           )}
         </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }

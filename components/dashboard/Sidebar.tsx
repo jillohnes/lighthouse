@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   BarChart3,
   Bell,
@@ -17,20 +18,24 @@ import {
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "On Premise", icon: Building2, active: false },
-  { label: "Off Premise", icon: Store, active: false },
-  { label: "Targets & Pacing", icon: Target, active: false },
-  { label: "Performance Drilldown", icon: TrendingUp, active: false },
-  { label: "Historical Results", icon: BarChart3, active: false },
-  { label: "AI Insights", icon: Sparkles, active: false, badge: "New" },
-  { label: "Reports", icon: FileText, active: false },
-  { label: "Data Explorer", icon: Database, active: false },
-  { label: "Alerts", icon: Bell, active: false },
-  { label: "Settings", icon: Settings, active: false },
+  { label: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { label: "On Premise", icon: Building2, href: "#" },
+  { label: "Off Premise", icon: Store, href: "#" },
+  { label: "Targets & Pacing", icon: Target, href: "#" },
+  { label: "Performance Drilldown", icon: TrendingUp, href: "#" },
+  { label: "Historical Results", icon: BarChart3, href: "#" },
+  { label: "AI Insights", icon: Sparkles, href: "#", badge: "New" },
+  { label: "Reports", icon: FileText, href: "#" },
+  { label: "Data Explorer", icon: Database, href: "#" },
+  { label: "Alerts", icon: Bell, href: "#" },
+  { label: "Settings", icon: Settings, href: "/settings" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  activeNav: string;
+}
+
+export function Sidebar({ activeNav }: SidebarProps) {
   return (
     <aside className="flex w-[220px] shrink-0 flex-col bg-[#3B2314] text-white">
       <div className="border-b border-white/10 px-5 py-5">
@@ -39,26 +44,40 @@ export function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-0.5">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.label}>
-              <button
-                type="button"
-                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  item.active
-                    ? "bg-[#5C3D2E] font-medium text-white"
-                    : "text-white/70 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="rounded bg-[#B5455C] px-1.5 py-0.5 text-[10px] font-semibold uppercase">
-                    {item.badge}
-                  </span>
+          {NAV_ITEMS.map((item) => {
+            const isActive = item.label === activeNav;
+            const className = `flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+              isActive
+                ? "bg-[#5C3D2E] font-medium text-white"
+                : "text-white/70 hover:bg-white/5 hover:text-white"
+            }`;
+
+            return (
+              <li key={item.label}>
+                {item.href === "#" ? (
+                  <button type="button" className={className}>
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge && (
+                      <span className="rounded bg-[#B5455C] px-1.5 py-0.5 text-[10px] font-semibold uppercase">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                ) : (
+                  <Link href={item.href} className={className}>
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                    {item.badge && (
+                      <span className="rounded bg-[#B5455C] px-1.5 py-0.5 text-[10px] font-semibold uppercase">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
                 )}
-              </button>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
