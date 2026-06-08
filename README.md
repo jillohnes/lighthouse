@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lighthouse — Trade Program Dashboard
+
+Interactive measurement dashboard for trade program performance, built with Next.js.
+
+## Features
+
+- Filterable dashboard by Brand, Region, Market, and date range
+- KPI cards with target-based color coding (green / yellow / red)
+- On Premise & Off Premise performance drill-downs
+- Targets & Pacing summary
+- Collapsible AI Insights panel
+- Supabase database integration with Excel import
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+corepack pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.local.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Add your Supabase credentials to `.env.local`:
 
-## Learn More
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Set up the database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Run `supabase/schema.sql` in your Supabase SQL Editor.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Import Excel data
 
-## Deploy on Vercel
+Place your spreadsheet at `data/import.xlsx`, then:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+corepack pnpm import:data
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `data/import-template.csv` for the expected column format.
+
+### 5. Run the dev server
+
+```bash
+corepack pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server |
+| `pnpm build` | Production build |
+| `pnpm start` | Start production server |
+| `pnpm import:data` | Import Excel file into Supabase |
+
+## Tech Stack
+
+- Next.js 16 · React 19 · TypeScript · Tailwind CSS
+- Recharts · Supabase · react-day-picker
