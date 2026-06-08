@@ -25,6 +25,8 @@ export interface KpiMetric {
   target: number;
   targetLabel: string;
   status: TargetStatus;
+  showTarget?: boolean;
+  showStatus?: boolean;
 }
 
 export interface MonthlyPerformance {
@@ -40,6 +42,15 @@ export interface BreakdownRow {
   impact: number;
   result: number;
   change: number;
+  reachTarget?: number;
+  impactTarget?: number;
+  resultTarget?: number;
+  reachStatus?: TargetStatus;
+  impactStatus?: TargetStatus;
+  resultStatus?: TargetStatus;
+  reachPercent?: number;
+  impactPercent?: number;
+  resultPercent?: number;
 }
 
 export interface TargetGauge {

@@ -18,6 +18,33 @@ export type ProgramMetricRow = {
   py_roi_change: number | null;
 };
 
+export type ContentMetricRow = {
+  id: string;
+  metric_date: string;
+  region: string;
+  market: string;
+  hct_rep: string;
+  handle: string;
+  instagram_followers: number;
+  tiktok_followers: number;
+  avg_eng_rate: number;
+  avg_viewability: number;
+  stories_per_month: number;
+  reels_per_month: number;
+  organic_reach_instagram: number;
+  organic_reach_tiktok: number;
+  organic_impressions: number;
+  paid_media: boolean;
+  paid_boosting_total: number;
+  paid_impressions: number;
+  ctr_benchmark: number;
+  ctr_results: number;
+  total_clicks: number;
+  cpc_benchmark: number;
+  cpc_results: number;
+  cpc_delta: number;
+};
+
 export type KpiTargetRow = {
   metric_key: string;
   target_value: number;

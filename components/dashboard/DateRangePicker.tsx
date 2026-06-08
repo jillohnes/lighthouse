@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { normalizeLocalDate } from "@/lib/dates";
 import { Calendar, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
@@ -52,7 +53,7 @@ export function DateRangePicker({
             selected={value}
             onSelect={(date) => {
               if (date) {
-                onChange(date);
+                onChange(normalizeLocalDate(date));
                 setOpen(false);
               }
             }}

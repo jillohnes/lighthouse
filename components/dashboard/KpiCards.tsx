@@ -32,15 +32,24 @@ const STATUS_CONFIG: Record<
   },
 };
 
+const NEUTRAL_CONFIG = {
+  bg: "bg-white",
+  badge: "",
+  label: "",
+};
+
 function getPercentOfTarget(actual: number, target: number): number {
+  if (target <= 0) return 0;
   return Math.round((actual / target) * 100);
 }
 
 export function KpiCards({ kpis }: KpiCardsProps) {
   return (
-    <div className="grid grid-cols-7 gap-3">
+    <div className="grid grid-cols-8 gap-3">
       {kpis.map((kpi) => {
-        const config = STATUS_CONFIG[kpi.status];
+        const showTarget = kpi.showTarget !== false;
+        const showStatus = kpi.showStatus !== false;
+        const config = showStatus ? STATUS_CONFIG[kpi.status] : NEUTRAL_CONFIG;
         const percentOfTarget = getPercentOfTarget(kpi.actual, kpi.target);
 
         return (
@@ -52,12 +61,14 @@ export function KpiCards({ kpis }: KpiCardsProps) {
 
             <p className="mt-1 text-xl font-bold text-[#3B2314]">{kpi.value}</p>
 
-            <p className="mt-0.5 text-[10px] font-medium text-[#4A2C1A]/50">
-              Target: {kpi.targetLabel}{" "}
-              <span className="font-semibold text-[#4A2C1A]/70">
-                ({percentOfTarget}%)
-              </span>
-            </p>
+            {showTarget && (
+              <p className="mt-0.5 text-[10px] font-medium text-[#4A2C1A]/50">
+                Target: {kpi.targetLabel}{" "}
+                <span className="font-semibold text-[#4A2C1A]/70">
+                  ({percentOfTarget}%)
+                </span>
+              </p>
+            )}
 
             {kpi.change !== 0 && (
               <div
@@ -77,13 +88,15 @@ export function KpiCards({ kpis }: KpiCardsProps) {
               </div>
             )}
 
-            <div className="mt-auto pt-3">
-              <span
-                className={`inline-block w-full rounded px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wide ${config.badge}`}
-              >
-                {config.label}
-              </span>
-            </div>
+            {showStatus && (
+              <div className="mt-auto pt-3">
+                <span
+                  className={`inline-block w-full rounded px-2 py-1 text-center text-[9px] font-bold uppercase tracking-wide ${config.badge}`}
+                >
+                  {config.label}
+                </span>
+              </div>
+            )}
           </div>
         );
       })}

@@ -13,6 +13,14 @@ import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
 import * as XLSX from "xlsx";
+import { CONTENT_BRAND } from "../lib/content-metrics";
+import {
+  BUDGET_MODES,
+  DEFAULT_PROGRAM_SETTINGS,
+  rowsToSettings,
+  type ActivationType,
+  type ActivationTypeSettings,
+} from "../lib/settings";
 
 config({ path: ".env.local" });
 
@@ -110,14 +118,32 @@ function isActivationsFormat(headers: string[]): boolean {
   );
 }
 
-function mapActivationsRow(row: Record<string, unknown>): MetricRecord {
-  const activationType = String(row["Activation Type"] ?? "");
+function getActivationSpend(
+  activationType: ActivationType,
+  budgets: Record<ActivationType, ActivationTypeSettings>,
+  digitalCount: number,
+): number {
+  const config = budgets[activationType];
+  if (!config) return 0;
+
+  if (BUDGET_MODES[activationType] === "total_cost") {
+    return digitalCount > 0 ? config.budget / digitalCount : 0;
+  }
+
+  return config.budget;
+}
+
+function mapActivationsRow(
+  row: Record<string, unknown>,
+  budgets: Record<ActivationType, ActivationTypeSettings>,
+  digitalCount: number,
+): MetricRecord {
+  const activationType = String(row["Activation Type"] ?? "") as ActivationType;
   const locationType = String(row["Location Type"] ?? "");
   const reach = Number(row.Reach) || 0;
   const impact = Number(row.Impact) || 0;
-  const result = Number(row.Result) || 0;
-  const spend = result * 100;
-  const returnValue = Math.round(spend * (0.65 + impact / 200));
+  const sales = Number(row.Result) || 0;
+  const spend = getActivationSpend(activationType, budgets, digitalCount);
   const roi = impact > 0 ? Math.min(100, Math.round(impact * 2.2)) : 0;
   const isDigital = activationType.toLowerCase().includes("digital");
   const channel = isDigital ? "off_premise" : "on_premise";
@@ -131,7 +157,7 @@ function mapActivationsRow(row: Record<string, unknown>): MetricRecord {
     venue_type: channel === "on_premise" ? locationType : null,
     retailer_type: channel === "off_premise" ? locationType : null,
     spend,
-    return_value: returnValue,
+    return_value: sales,
     roi,
     samples: isDigital ? reach : Math.round(reach * 0.4),
     content_reach: reach * 1000,
@@ -196,20 +222,35 @@ async function main() {
   console.log(`Format: ${useActivations ? "Activations" : "Standard"}`);
   console.log(`Rows: ${rawRows.length}`);
 
-  const records = useActivations
-    ? rawRows.map(mapActivationsRow)
-    : rawRows.map(mapStandardRow);
-
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  console.log("Clearing existing data...");
+  let budgets = DEFAULT_PROGRAM_SETTINGS.activationTypes;
+  const { data: targetRows } = await supabase.from("kpi_targets").select("*");
+  if (targetRows?.length) {
+    budgets = rowsToSettings(targetRows).activationTypes;
+  }
+
+  const digitalCount = useActivations
+    ? rawRows.filter(
+        (row) =>
+          String(row["Activation Type"] ?? "")
+            .toLowerCase()
+            .includes("digital"),
+      ).length
+    : 0;
+
+  const records = useActivations
+    ? rawRows.map((row) => mapActivationsRow(row, budgets, digitalCount))
+    : rawRows.map(mapStandardRow);
+
+  console.log("Clearing existing activation data (keeping Content rows)...");
   const { error: deleteError } = await supabase
     .from("program_metrics")
     .delete()
-    .gte("created_at", "1970-01-01");
+    .neq("brand", CONTENT_BRAND);
   if (deleteError) {
     console.error("Failed to clear table:", deleteError.message);
     process.exit(1);

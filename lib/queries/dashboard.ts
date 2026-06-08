@@ -1,44 +1,43 @@
-import { format } from "date-fns";
 import { decodeActivation, type DecodedActivation } from "@/lib/activation-metrics";
+import { formatDateParam } from "@/lib/dates";
 import { formatCurrency, formatNumber, formatReach } from "@/lib/format";
+import {
+  buildActivationBreakdown,
+  compareTypeMetric,
+  computeKpiMetrics,
+  formatMetricDisplay,
+  getTypeRows,
+} from "@/lib/metric-comparison";
 import { getProgramSettings } from "@/lib/queries/settings";
 import {
   BUDGET_LABELS,
   BUDGET_MODES,
-  METRIC_DISPLAY,
-  TARGET_MODES,
   getApplicableTypes,
   getMetricLabel,
   type ActivationType,
-  type MetricKey,
   type ProgramSettings,
-  type TargetMode,
 } from "@/lib/settings";
 import { getBudgetStatus, getTargetStatus } from "@/lib/target-status";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { CONTENT_BRAND } from "@/lib/content-metrics";
+import {
+  fetchContentMetricsSafe,
+  getContentTotals,
+} from "@/lib/queries/content";
+import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/server";
 import { fetchAllProgramMetrics } from "@/lib/queries/fetch-all";
 import type { DashboardData, DashboardFilters, TargetGauge } from "@/lib/types";
 
 const GAUGE_GREEN_THRESHOLD = 98;
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-const DEFAULT_TARGETS: Record<string, number> = {
-  activations: 15_000,
-  reach: 3_500_000,
-  impact: 500_000,
-  result: 4_500_000,
-  markets: 25,
-  location_types: 7,
-  avg_impact: 28,
-};
-
 function buildQuery(filters: DashboardFilters) {
   const supabase = getSupabaseAdmin();
   let query = supabase
     .from("program_metrics")
     .select("*")
-    .gte("metric_date", format(filters.startDate, "yyyy-MM-dd"))
-    .lte("metric_date", format(filters.endDate, "yyyy-MM-dd"));
+    .neq("brand", CONTENT_BRAND)
+    .gte("metric_date", formatDateParam(filters.startDate))
+    .lte("metric_date", formatDateParam(filters.endDate));
 
   if (filters.activationType.length > 0) {
     query = query.in("brand", filters.activationType);
@@ -53,121 +52,6 @@ function buildQuery(filters: DashboardFilters) {
   return query;
 }
 
-function getTypeRows(rows: DecodedActivation[], type: ActivationType) {
-  return rows.filter((row) => row.activation_type === type);
-}
-
-function getMetricTotal(
-  typeRows: DecodedActivation[],
-  type: ActivationType,
-  metric: MetricKey,
-) {
-  if (METRIC_DISPLAY[type][metric].format === "currency") {
-    return typeRows.reduce((sum, row) => sum + row.cost, 0);
-  }
-
-  return typeRows.reduce((sum, row) => sum + row[metric], 0);
-}
-
-function formatMetricDisplay(
-  type: ActivationType,
-  metric: MetricKey,
-  value: number,
-) {
-  const format = METRIC_DISPLAY[type][metric].format;
-
-  switch (format) {
-    case "number":
-      return formatNumber(value);
-    case "currency":
-      return formatCurrency(value);
-    case "compact":
-      return metric === "impact" ? value.toFixed(1) : formatReach(value);
-  }
-}
-
-function compareMetric(
-  mode: TargetMode,
-  total: number,
-  count: number,
-  target: number,
-) {
-  const actual = mode === "per_activation" ? total / count : total;
-  const percentOfTarget = target > 0 ? Math.round((actual / target) * 100) : 0;
-
-  return { actual, target, percentOfTarget };
-}
-
-function computeSummaryTargets(
-  rows: DecodedActivation[],
-  settings: ProgramSettings,
-  applicableTypes: ActivationType[],
-) {
-  let reachTarget = 0;
-  let resultTarget = 0;
-
-  for (const type of applicableTypes) {
-    const typeRows = getTypeRows(rows, type);
-    const config = settings.activationTypes[type];
-    const mode = TARGET_MODES[type];
-    const count = typeRows.length;
-
-    if (mode === "per_activation") {
-      reachTarget += config.reach * count;
-      resultTarget += config.result * count;
-    } else {
-      reachTarget += config.reach;
-      resultTarget += config.result;
-    }
-  }
-
-  return { reach: reachTarget, result: resultTarget };
-}
-
-function computeImpactSummary(
-  rows: DecodedActivation[],
-  settings: ProgramSettings,
-  applicableTypes: ActivationType[],
-) {
-  const perActivationTypes = applicableTypes.filter(
-    (type) => TARGET_MODES[type] === "per_activation",
-  );
-  const perActivationRows = rows.filter((row) =>
-    perActivationTypes.includes(row.activation_type as ActivationType),
-  );
-
-  if (perActivationRows.length > 0) {
-    const actual =
-      perActivationRows.reduce((sum, row) => sum + row.impact, 0) /
-      perActivationRows.length;
-
-    let targetSum = 0;
-    let weight = 0;
-    for (const type of perActivationTypes) {
-      const typeRows = getTypeRows(rows, type);
-      if (typeRows.length > 0) {
-        targetSum += settings.activationTypes[type].impact * typeRows.length;
-        weight += typeRows.length;
-      }
-    }
-
-    return { actual, target: weight > 0 ? targetSum / weight : 0 };
-  }
-
-  const digitalRows = getTypeRows(rows, "Digital Sampling");
-  if (
-    digitalRows.length > 0 &&
-    applicableTypes.includes("Digital Sampling")
-  ) {
-    return {
-      actual: digitalRows.reduce((sum, row) => sum + row.impact, 0),
-      target: settings.activationTypes["Digital Sampling"].impact,
-    };
-  }
-
-  return { actual: 0, target: 0 };
-}
-
 function buildMetricGauges(
   rows: DecodedActivation[],
   settings: ProgramSettings,
@@ -180,27 +64,26 @@ function buildMetricGauges(
     if (!typeRows.length) continue;
 
     const config = settings.activationTypes[type];
-    const mode = TARGET_MODES[type];
-    const count = typeRows.length;
 
     for (const metric of ["reach", "impact", "result"] as const) {
-      const total = getMetricTotal(typeRows, type, metric);
-      const { actual, target, percentOfTarget } = compareMetric(
-        mode,
-        total,
-        count,
+      const comparison = compareTypeMetric(
+        typeRows,
+        type,
+        metric,
         config[metric],
       );
 
-      const label = getMetricLabel(type, metric);
-
       gauges.push({
-        label,
-        target: formatMetricDisplay(type, metric, target),
-        actual: formatMetricDisplay(type, metric, actual),
-        percent: Math.min(100, percentOfTarget),
-        percentOfTarget,
-        status: getTargetStatus(actual, target, GAUGE_GREEN_THRESHOLD),
+        label: getMetricLabel(type, metric),
+        target: formatMetricDisplay(type, metric, comparison.target),
+        actual: formatMetricDisplay(type, metric, comparison.actual),
+        percent: Math.min(100, comparison.percentOfTarget),
+        percentOfTarget: comparison.percentOfTarget,
+        status: getTargetStatus(
+          comparison.actual,
+          comparison.target,
+          GAUGE_GREEN_THRESHOLD,
+        ),
         change: 0,
       });
     }
@@ -330,97 +213,140 @@ function generateInsights(rows: DecodedActivation[], filters: DashboardFilters) 
   return insights;
 }
 
-export async function getDashboardDataFromSupabase(
+async function fetchProgramMetricsSafe(
+  filters: DashboardFilters,
+): Promise<Awaited<ReturnType<typeof fetchAllProgramMetrics>>> {
+  if (!isSupabaseConfigured()) return [];
+
+  try {
+    return await fetchAllProgramMetrics(() => buildQuery(filters));
+  } catch (error) {
+    console.error("Failed to load program metrics:", error);
+    return [];
+  }
+}
+
+export async function getDashboardData(
   filters: DashboardFilters,
 ): Promise<DashboardData | null> {
-  const rows = await fetchAllProgramMetrics(() => buildQuery(filters));
+  const [rows, contentTotals, contentRows] = await Promise.all([
+    fetchProgramMetricsSafe(filters),
+    getContentTotals(filters),
+    fetchContentMetricsSafe(filters),
+  ]);
 
-  if (!rows.length) return null;
+  const hasActivations = rows.length > 0;
+  const hasContent =
+    contentRows.length > 0 ||
+    contentTotals.organicImpressions > 0 ||
+    contentTotals.paidReach > 0;
 
-  const decoded = rows.map(decodeActivation);
+  if (!hasActivations && !hasContent) return null;
+
+  const decoded = hasActivations ? rows.map(decodeActivation) : [];
   const settings = await getProgramSettings();
   const applicableTypes = getApplicableTypes(filters.activationType);
-  const summaryTargets = computeSummaryTargets(decoded, settings, applicableTypes);
-  const impactSummary = computeImpactSummary(decoded, settings, applicableTypes);
-
-  const totalReach = decoded.reduce((s, r) => s + r.reach, 0);
-  const totalResult = decoded.reduce((s, r) => s + r.result, 0);
-  const marketsCount = new Set(decoded.map((r) => r.market)).size;
-  const locationTypesCount = new Set(decoded.map((r) => r.location_type)).size;
-  const activationTypesCount = new Set(decoded.map((r) => r.activation_type)).size;
+  const kpiMetrics = computeKpiMetrics(decoded, settings, applicableTypes);
 
   const sparkline = [62, 68, 71, 75, 79, 84, 87];
 
   const kpis = [
+    {
+      label: "Total Spend",
+      value: formatCurrency(kpiMetrics.spend.actual),
+      change: 0,
+      sparkline,
+      actual: kpiMetrics.spend.actual,
+      target: 0,
+      targetLabel: "",
+      status: "above" as const,
+      showTarget: false,
+      showStatus: false,
+    },
     {
       label: "Total Activations",
       value: decoded.length.toLocaleString(),
       change: 0,
       sparkline,
       actual: decoded.length,
-      target: DEFAULT_TARGETS.activations,
-      targetLabel: DEFAULT_TARGETS.activations.toLocaleString(),
-      status: getTargetStatus(decoded.length, DEFAULT_TARGETS.activations),
+      target: 0,
+      targetLabel: "",
+      status: "above" as const,
+      showTarget: false,
+      showStatus: false,
     },
     {
-      label: "Total Reach",
-      value: formatReach(totalReach),
+      label: "Total Reach (People Engaged)",
+      value: formatNumber(kpiMetrics.reach.actual),
       change: 12.4,
       sparkline: sparkline.map((v) => v + 3),
-      actual: totalReach,
-      target: summaryTargets.reach,
-      targetLabel: formatReach(summaryTargets.reach),
-      status: getTargetStatus(totalReach, summaryTargets.reach),
+      actual: kpiMetrics.reach.actual,
+      target: kpiMetrics.reach.target,
+      targetLabel: formatNumber(kpiMetrics.reach.target),
+      status: getTargetStatus(
+        kpiMetrics.reach.actual,
+        kpiMetrics.reach.target,
+      ),
     },
     {
-      label: "Avg Impact",
-      value: impactSummary.actual.toFixed(1),
+      label: "Total Impact (Samples)",
+      value: formatNumber(kpiMetrics.impact.actual),
       change: 4.2,
       sparkline: sparkline.map((v) => Math.min(v + 8, 100)),
-      actual: impactSummary.actual,
-      target: impactSummary.target,
-      targetLabel: impactSummary.target.toFixed(1),
-      status: getTargetStatus(impactSummary.actual, impactSummary.target),
+      actual: kpiMetrics.impact.actual,
+      target: kpiMetrics.impact.target,
+      targetLabel: formatNumber(kpiMetrics.impact.target),
+      status: getTargetStatus(
+        kpiMetrics.impact.actual,
+        kpiMetrics.impact.target,
+      ),
     },
     {
-      label: "Total Result",
-      value: formatReach(totalResult),
+      label: "Total Results (Sales Impact)",
+      value: formatCurrency(kpiMetrics.results.actual),
       change: 15.8,
       sparkline,
-      actual: totalResult,
-      target: summaryTargets.result,
-      targetLabel: formatReach(summaryTargets.result),
-      status: getTargetStatus(totalResult, summaryTargets.result),
+      actual: kpiMetrics.results.actual,
+      target: kpiMetrics.results.target,
+      targetLabel: formatCurrency(kpiMetrics.results.target),
+      status: getTargetStatus(
+        kpiMetrics.results.actual,
+        kpiMetrics.results.target,
+      ),
     },
     {
-      label: "Markets",
-      value: String(marketsCount),
+      label: "Organic Impressions",
+      value: formatReach(contentTotals.organicImpressions),
       change: 0,
-      sparkline: [5, 6, 6, 7, 7, 8, marketsCount],
-      actual: marketsCount,
-      target: DEFAULT_TARGETS.markets,
-      targetLabel: String(DEFAULT_TARGETS.markets),
-      status: getTargetStatus(marketsCount, DEFAULT_TARGETS.markets),
+      sparkline,
+      actual: contentTotals.organicImpressions,
+      target: 0,
+      targetLabel: "",
+      status: "above" as const,
+      showTarget: false,
+      showStatus: false,
     },
     {
-      label: "Location Types",
-      value: String(locationTypesCount),
+      label: "Paid Reach",
+      value: formatReach(contentTotals.paidReach),
       change: 0,
-      sparkline: [4, 5, 5, 6, 6, 7, locationTypesCount],
-      actual: locationTypesCount,
-      target: DEFAULT_TARGETS.location_types,
-      targetLabel: String(DEFAULT_TARGETS.location_types),
-      status: getTargetStatus(locationTypesCount, DEFAULT_TARGETS.location_types),
+      sparkline,
+      actual: contentTotals.paidReach,
+      target: 0,
+      targetLabel: "",
+      status: "above" as const,
+      showTarget: false,
+      showStatus: false,
     },
     {
-      label: "Activation Types",
-      value: String(activationTypesCount),
+      label: "ROI (Sales/Spend)",
+      value: `${kpiMetrics.roi.actual.toFixed(1)}%`,
       change: 0,
-      sparkline: [2, 2, 3, 3, 3, 3, activationTypesCount],
-      actual: activationTypesCount,
-      target: 3,
-      targetLabel: "3",
-      status: getTargetStatus(activationTypesCount, 3),
+      sparkline,
+      actual: kpiMetrics.roi.actual,
+      target: 100,
+      targetLabel: "100%",
+      status: getTargetStatus(kpiMetrics.roi.actual, 100),
     },
   ];
 
@@ -441,7 +367,7 @@ export async function getDashboardDataFromSupabase(
     kpis,
     byActivationType: {
       monthly: groupMonthly(inPerson.length ? inPerson : decoded),
-      breakdown: groupBreakdown(decoded, "activation_type"),
+      breakdown: buildActivationBreakdown(decoded, settings),
     },
     byLocationType: {
       monthly: groupMonthly(digital.length ? digital : decoded),
@@ -451,6 +377,16 @@ export async function getDashboardDataFromSupabase(
     pacingPercent,
     insights: generateInsights(decoded, filters),
     totalActivations: decoded.length,
-    markets: marketsCount,
+    markets: new Set([
+      ...decoded.map((r) => r.market),
+      ...contentRows.map((row) => row.market),
+    ]).size,
   };
+}
+
+/** @deprecated Use getDashboardData */
+export async function getDashboardDataFromSupabase(
+  filters: DashboardFilters,
+): Promise<DashboardData | null> {
+  return getDashboardData(filters);
 }

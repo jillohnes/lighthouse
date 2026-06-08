@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChevronDown, TrendingDown, TrendingUp } from "lucide-react";
+import { STATUS_STYLES } from "@/lib/target-status";
 import type { BreakdownRow, MonthlyPerformance } from "@/lib/types";
 
 interface PerformanceDrilldownProps {
@@ -38,6 +39,28 @@ export function PerformanceDrilldown({
 }: PerformanceDrilldownProps) {
   const [activeMetric, setActiveMetric] = useState<(typeof METRICS)[number]>("Reach");
   const config = METRIC_CONFIG[activeMetric];
+  const showTargets = breakdown.some((row) => row.reachPercent !== undefined);
+
+  function formatCell(
+    row: BreakdownRow,
+    metric: "reach" | "impact" | "result",
+    value: number,
+  ) {
+    const percent = row[`${metric}Percent`];
+    const status = row[`${metric}Status`];
+
+    if (!showTargets || percent === undefined || !status) {
+      return <span className="text-[#4A2C1A]/80">{value.toLocaleString()}</span>;
+    }
+
+    const colors = STATUS_STYLES[status];
+    return (
+      <div>
+        <span className="text-[#4A2C1A]/80">{value.toLocaleString()}</span>
+        <p className={`text-[10px] font-semibold ${colors.text}`}>{percent}% of target</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-[#4A2C1A]/8 bg-white p-5 shadow-sm">
@@ -148,21 +171,25 @@ export function PerformanceDrilldown({
               {breakdown.map((row) => (
                 <tr key={row.name} className="border-b border-[#4A2C1A]/5">
                   <td className="py-2 font-medium text-[#3B2314]">{row.name}</td>
-                  <td className="py-2 text-[#4A2C1A]/80">{row.reach.toLocaleString()}</td>
-                  <td className="py-2 text-[#4A2C1A]/80">{row.impact}</td>
+                  <td className="py-2">{formatCell(row, "reach", row.reach)}</td>
+                  <td className="py-2">{formatCell(row, "impact", row.impact)}</td>
                   <td className="py-2">
-                    <span
-                      className={`inline-flex items-center gap-0.5 font-medium ${
-                        row.change >= 0 ? "text-emerald-600" : "text-red-500"
-                      }`}
-                    >
-                      {row.change >= 0 ? (
-                        <TrendingUp className="h-3 w-3" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3" />
-                      )}
-                      {row.result.toLocaleString()}
-                    </span>
+                    {showTargets ? (
+                      formatCell(row, "result", row.result)
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-0.5 font-medium ${
+                          row.change >= 0 ? "text-emerald-600" : "text-red-500"
+                        }`}
+                      >
+                        {row.change >= 0 ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3" />
+                        )}
+                        {row.result.toLocaleString()}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

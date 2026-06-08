@@ -1,7 +1,15 @@
 import type { ProgramMetricRow } from "@/lib/supabase/server";
 
-/** Decode stored row back to original Excel metrics (Reach, Impact, Result). */
+/**
+ * Decode Supabase row back to Excel metrics from import.xlsx:
+ *   Reach  ← content_reach  (Excel Reach)
+ *   Impact ← roi           (Excel Impact)
+ *   sales  ← return_value  (Excel Result — sales dollars)
+ *   cost   ← spend         (activation cost from settings budget)
+ */
 export function decodeActivation(row: ProgramMetricRow) {
+  const sales = Number(row.return_value);
+
   return {
     activation_type: row.brand,
     region: row.region,
@@ -10,7 +18,8 @@ export function decodeActivation(row: ProgramMetricRow) {
     location_type: row.venue_type ?? row.retailer_type ?? "Other",
     reach: Number(row.content_reach) / 1000,
     impact: Number(row.roi) / 2.2,
-    result: Number(row.spend) / 100,
+    result: sales,
+    sales,
     cost: Number(row.spend),
     channel: row.channel,
   };

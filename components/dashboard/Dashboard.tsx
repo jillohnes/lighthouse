@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Share2 } from "lucide-react";
 import { getDefaultFilters } from "@/lib/data";
+import { formatDateParam, normalizeLocalDate, parseDateParam } from "@/lib/dates";
 import type { DashboardData, DashboardFilters, FilterOptions } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { AiInsights } from "./AiInsights";
@@ -21,8 +22,8 @@ const SUB_NAV_TABS = [
 
 function buildQueryString(filters: DashboardFilters): string {
   const params = new URLSearchParams({
-    startDate: filters.startDate.toISOString().slice(0, 10),
-    endDate: filters.endDate.toISOString().slice(0, 10),
+    startDate: formatDateParam(filters.startDate),
+    endDate: formatDateParam(filters.endDate),
   });
   if (filters.activationType.length) {
     params.set("activationType", filters.activationType.join(","));
@@ -70,8 +71,8 @@ export function Dashboard() {
         if (json.options?.dateRange) {
           setFilters((prev) => ({
             ...prev,
-            startDate: new Date(json.options!.dateRange.min + "T00:00:00"),
-            endDate: new Date(json.options!.dateRange.max + "T00:00:00"),
+            startDate: parseDateParam(json.options!.dateRange.min),
+            endDate: parseDateParam(json.options!.dateRange.max),
           }));
         }
       })
@@ -85,17 +86,14 @@ export function Dashboard() {
   function applyFilterUpdates(updates: Partial<DashboardFilters>) {
     setFilters((prev) => {
       const next = { ...prev, ...updates };
-      if (
-        updates.startDate &&
-        updates.startDate > next.endDate
-      ) {
-        next.endDate = updates.startDate;
+      if (updates.startDate) {
+        next.startDate = normalizeLocalDate(updates.startDate);
       }
-      if (
-        updates.endDate &&
-        updates.endDate < next.startDate
-      ) {
-        next.startDate = updates.endDate;
+      if (updates.endDate) {
+        next.endDate = normalizeLocalDate(updates.endDate);
+      }
+      if (next.startDate > next.endDate) {
+        next.endDate = next.startDate;
       }
       return next;
     });

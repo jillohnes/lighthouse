@@ -1,21 +1,19 @@
-import type { ProgramMetricRow } from "@/lib/supabase/server";
+import type { ContentMetricRow, ProgramMetricRow } from "@/lib/supabase/server";
 
 const PAGE_SIZE = 1000;
 
-type RangeQuery = {
+type RangeQuery<T> = {
   range: (
     from: number,
     to: number,
   ) => PromiseLike<{
-    data: ProgramMetricRow[] | null;
+    data: T[] | null;
     error: { message: string } | null;
   }>;
 };
 
-export async function fetchAllProgramMetrics(
-  buildQuery: () => RangeQuery,
-): Promise<ProgramMetricRow[]> {
-  const all: ProgramMetricRow[] = [];
+async function fetchAllRows<T>(buildQuery: () => RangeQuery<T>): Promise<T[]> {
+  const all: T[] = [];
   let from = 0;
 
   while (true) {
@@ -30,4 +28,22 @@ export async function fetchAllProgramMetrics(
   }
 
   return all;
+}
+
+export async function fetchAllRowsPaginated<T>(
+  buildQuery: () => RangeQuery<T>,
+): Promise<T[]> {
+  return fetchAllRows(buildQuery);
+}
+
+export async function fetchAllProgramMetrics(
+  buildQuery: () => RangeQuery<ProgramMetricRow>,
+): Promise<ProgramMetricRow[]> {
+  return fetchAllRows(buildQuery);
+}
+
+export async function fetchAllContentMetrics(
+  buildQuery: () => RangeQuery<ContentMetricRow>,
+): Promise<ContentMetricRow[]> {
+  return fetchAllRows(buildQuery);
 }
