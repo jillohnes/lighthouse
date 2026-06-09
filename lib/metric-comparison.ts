@@ -1,6 +1,8 @@
 import type { DecodedActivation } from "@/lib/activation-metrics";
+import { prorateRoiTarget } from "@/lib/campaign";
 import { formatCurrency, formatNumber, formatReach } from "@/lib/format";
 import {
+  ACTIVATION_TYPES,
   BUDGET_MODES,
   METRIC_DISPLAY,
   TARGET_MODES,
@@ -81,7 +83,7 @@ export function compareTypeMetric(
   };
 }
 
-function computeSalesTarget(
+export function computeSalesTarget(
   rows: DecodedActivation[],
   settings: ProgramSettings,
   applicableTypes: ActivationType[],
@@ -100,6 +102,26 @@ function computeSalesTarget(
   }
 
   return target;
+}
+
+export function computeSpendTarget(
+  rows: DecodedActivation[],
+  settings: ProgramSettings,
+  applicableTypes: ActivationType[],
+) {
+  let spendTarget = 0;
+
+  for (const type of applicableTypes) {
+    const typeRows = getTypeRows(rows, type);
+    const config = settings.activationTypes[type];
+    if (BUDGET_MODES[type] === "avg_cost") {
+      spendTarget += config.budget * typeRows.length;
+    } else {
+      spendTarget += config.budget;
+    }
+  }
+
+  return spendTarget;
 }
 
 export function computeProgramSummary(
@@ -171,6 +193,7 @@ export function computeKpiMetrics(
   rows: DecodedActivation[],
   settings: ProgramSettings,
   applicableTypes: ActivationType[],
+  dateRange?: { startDate: Date; endDate: Date },
 ) {
   const summary = computeProgramSummary(rows, settings, applicableTypes);
 
@@ -187,22 +210,17 @@ export function computeKpiMetrics(
   }
 
   const totalSpend = rows.reduce((sum, row) => sum + row.cost, 0);
-  let spendTarget = 0;
-  for (const type of applicableTypes) {
-    const typeRows = getTypeRows(rows, type);
-    const config = settings.activationTypes[type];
-    if (BUDGET_MODES[type] === "avg_cost") {
-      spendTarget += config.budget * typeRows.length;
-    } else {
-      spendTarget += config.budget;
-    }
-  }
+  const spendTarget = computeSpendTarget(rows, settings, applicableTypes);
 
   const totalSales = rows.reduce((sum, row) => sum + row.sales, 0);
   const salesTarget = computeSalesTarget(rows, settings, applicableTypes);
 
   const roi = totalSpend > 0 ? (totalSales / totalSpend) * 100 : 0;
-  const roiTarget = spendTarget > 0 ? (salesTarget / spendTarget) * 100 : 0;
+  const fullRoiTarget =
+    spendTarget > 0 ? (salesTarget / spendTarget) * 100 : 0;
+  const roiTarget = dateRange
+    ? prorateRoiTarget(fullRoiTarget, dateRange)
+    : fullRoiTarget;
 
   return {
     reach: summary.reach,
@@ -212,6 +230,99 @@ export function computeKpiMetrics(
     sales: { actual: totalSales, target: salesTarget },
     roi: { actual: roi, target: roiTarget },
   };
+}
+
+function computeLocationMetricTarget(
+  locRows: DecodedActivation[],
+  allRows: DecodedActivation[],
+  settings: ProgramSettings,
+  metric: MetricKey,
+): number {
+  let target = 0;
+
+  for (const type of ACTIVATION_TYPES) {
+    const locTypeRows = getTypeRows(locRows, type);
+    if (!locTypeRows.length) continue;
+
+    const config = settings.activationTypes[type];
+    if (TARGET_MODES[type] === "per_activation") {
+      target += config[metric] * locTypeRows.length;
+    } else {
+      const allTypeRows = getTypeRows(allRows, type);
+      const share =
+        allTypeRows.length > 0 ? locTypeRows.length / allTypeRows.length : 0;
+      target += config[metric] * share;
+    }
+  }
+
+  return target;
+}
+
+function compareLocationMetric(actual: number, target: number) {
+  const percentOfTarget = target > 0 ? Math.round((actual / target) * 100) : 0;
+
+  return {
+    actual,
+    target,
+    percentOfTarget,
+    status: getTargetStatus(actual, target),
+  };
+}
+
+export function buildLocationBreakdown(
+  rows: DecodedActivation[],
+  settings: ProgramSettings,
+): BreakdownRow[] {
+  const locations = [...new Set(rows.map((row) => row.location_type))];
+
+  return locations
+    .map((name) => {
+      const locRows = rows.filter((row) => row.location_type === name);
+      const reachActual = locRows.reduce((sum, row) => sum + row.reach, 0);
+      const impactActual = locRows.reduce((sum, row) => sum + row.impact, 0);
+      const resultActual = locRows.reduce((sum, row) => sum + row.sales, 0);
+
+      const reachTarget = computeLocationMetricTarget(
+        locRows,
+        rows,
+        settings,
+        "reach",
+      );
+      const impactTarget = computeLocationMetricTarget(
+        locRows,
+        rows,
+        settings,
+        "impact",
+      );
+      const resultTarget = computeLocationMetricTarget(
+        locRows,
+        rows,
+        settings,
+        "result",
+      );
+
+      const reach = compareLocationMetric(reachActual, reachTarget);
+      const impact = compareLocationMetric(impactActual, impactTarget);
+      const result = compareLocationMetric(resultActual, resultTarget);
+
+      return {
+        name,
+        reach: Math.round(reach.actual),
+        impact: Math.round(impact.actual),
+        result: Math.round(result.actual),
+        change: result.percentOfTarget - 100,
+        reachTarget: Math.round(reach.target),
+        impactTarget: Math.round(impact.target),
+        resultTarget: Math.round(result.target),
+        reachStatus: reach.status,
+        impactStatus: impact.status,
+        resultStatus: result.status,
+        reachPercent: reach.percentOfTarget,
+        impactPercent: impact.percentOfTarget,
+        resultPercent: result.percentOfTarget,
+      };
+    })
+    .sort((a, b) => b.result - a.result);
 }
 
 export function buildActivationBreakdown(

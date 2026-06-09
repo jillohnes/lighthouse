@@ -21,7 +21,7 @@ export function FilterSelect<T extends string>({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="h-9 min-w-[150px] appearance-none rounded-md border border-[#4A2C1A]/15 bg-white py-0 pl-3 pr-8 text-sm font-medium text-[#3B2314] transition-colors hover:border-[#4A2C1A]/30 focus:border-[#4A2C1A]/40 focus:outline-none focus:ring-2 focus:ring-[#4A2C1A]/10"
+        className="h-9 min-w-[160px] appearance-none rounded-md border border-brand/15 bg-white py-0 pl-3 pr-8 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10"
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>
@@ -29,7 +29,7 @@ export function FilterSelect<T extends string>({
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#4A2C1A]/40" />
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-brand/40" />
     </div>
   );
 }

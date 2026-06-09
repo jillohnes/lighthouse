@@ -26,6 +26,7 @@ config({ path: ".env.local" });
 
 type MetricRecord = {
   brand: string;
+  product_brand: string | null;
   region: string;
   market: string;
   metric_date: string;
@@ -150,6 +151,7 @@ function mapActivationsRow(
 
   return {
     brand: activationType,
+    product_brand: String(row.Brand ?? "").trim() || null,
     region: String(row.Region ?? "").trim(),
     market: String(row.Market ?? ""),
     metric_date: parseDate(row.Date),
@@ -172,8 +174,13 @@ function mapStandardRow(row: Record<string, unknown>): MetricRecord {
     mapped[normalizeHeader(key)] = value;
   }
 
+  const productBrand = String(
+    mapped.product_brand ?? mapped["product brand"] ?? "",
+  ).trim();
+
   return {
     brand: String(mapped.brand),
+    product_brand: productBrand || null,
     region: normalizeRegion(String(mapped.region)),
     market: String(mapped.market),
     metric_date: parseDate(mapped.metric_date),
@@ -188,6 +195,66 @@ function mapStandardRow(row: Record<string, unknown>): MetricRecord {
     py_spend_change: mapped.py_spend_change ? Number(mapped.py_spend_change) : null,
     py_roi_change: mapped.py_roi_change ? Number(mapped.py_roi_change) : null,
   };
+}
+
+const MIGRATION_SQL = `
+alter table program_metrics add column if not exists product_brand text;
+create index if not exists idx_program_metrics_product_brand on program_metrics (product_brand);
+`.trim();
+
+async function hasProductBrandColumn(
+  supabase: ReturnType<typeof createClient>,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("program_metrics")
+    .select("product_brand")
+    .limit(1);
+  return !error?.message?.includes("product_brand");
+}
+
+async function applyProductBrandMigration(): Promise<boolean> {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) return false;
+
+  try {
+    const pg = await import("pg");
+    const client = new pg.default.Client({ connectionString: databaseUrl });
+    await client.connect();
+    await client.query(MIGRATION_SQL);
+    await client.end();
+    console.log("Applied product_brand migration via DATABASE_URL.");
+    return true;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("Cannot find module 'pg'") ||
+        error.message.includes("Cannot find package 'pg'"))
+    ) {
+      console.error("Install pg to auto-migrate: npm install pg");
+      return false;
+    }
+    console.error("Migration failed:", error);
+    return false;
+  }
+}
+
+async function ensureProductBrandColumn(
+  supabase: ReturnType<typeof createClient>,
+): Promise<boolean> {
+  if (await hasProductBrandColumn(supabase)) return true;
+
+  console.log("product_brand column missing — attempting migration...");
+  if (await applyProductBrandMigration()) {
+    return hasProductBrandColumn(supabase);
+  }
+
+  console.warn(
+    "Could not add product_brand column automatically.\n" +
+      "Run this in Supabase → SQL Editor, then re-import:\n\n" +
+      MIGRATION_SQL +
+      "\n",
+  );
+  return false;
 }
 
 async function main() {
@@ -242,9 +309,23 @@ async function main() {
       ).length
     : 0;
 
-  const records = useActivations
-    ? rawRows.map((row) => mapActivationsRow(row, budgets, digitalCount))
-    : rawRows.map(mapStandardRow);
+  const supportsProductBrand = await ensureProductBrandColumn(supabase);
+
+  const records = (
+    useActivations
+      ? rawRows.map((row) => mapActivationsRow(row, budgets, digitalCount))
+      : rawRows.map(mapStandardRow)
+  ).map((record) => {
+    if (supportsProductBrand) return record;
+    const { product_brand: _productBrand, ...withoutBrand } = record;
+    return withoutBrand;
+  });
+
+  if (!supportsProductBrand && headers.includes("Brand")) {
+    console.warn(
+      "Importing without product_brand — Brand column will not be stored until migration is applied.",
+    );
+  }
 
   console.log("Clearing existing activation data (keeping Content rows)...");
   const { error: deleteError } = await supabase

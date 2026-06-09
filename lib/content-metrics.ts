@@ -1,14 +1,21 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as XLSX from "xlsx";
-import { formatDateParam } from "@/lib/dates";
+import { formatDateParam, parseDateParam } from "@/lib/dates";
 import { parseSpreadsheetDate } from "@/lib/parse-spreadsheet-date";
+import {
+  matchesBrandFilter,
+  matchesContentRowFilters,
+  matchesMarketFilter,
+  matchesRegionFilter,
+} from "@/lib/query-filters";
 import type { DashboardFilters } from "@/lib/types";
 
 export type ContentMetricRecord = {
   metric_date: string;
   region: string;
   market: string;
+  product_brand: string;
   hct_rep: string;
   handle: string;
   instagram_followers: number;
@@ -42,6 +49,7 @@ export const CONTENT_BRAND = "Content";
 export function mapContentToProgramMetric(row: ContentMetricRecord) {
   return {
     brand: CONTENT_BRAND,
+    product_brand: row.product_brand || null,
     region: row.region,
     market: row.market,
     metric_date: row.metric_date,
@@ -88,6 +96,7 @@ export function mapCreatorsRow(row: Record<string, unknown>): ContentMetricRecor
     metric_date: parseSpreadsheetDate(row.Date),
     region: String(row.Region ?? "").trim(),
     market: String(row.Market ?? "").trim(),
+    product_brand: String(row.Brand ?? "").trim(),
     hct_rep: String(row["HCT Rep"] ?? "").trim(),
     handle: String(row.Handle ?? "").trim(),
     instagram_followers: num(row["Instagram (Total Followers)"]),
@@ -161,17 +170,55 @@ export function filterContentMetrics(
   rows: ContentMetricRecord[],
   filters: DashboardFilters,
 ): ContentMetricRecord[] {
-  const startDate = formatDateParam(filters.startDate);
-  const endDate = formatDateParam(filters.endDate);
-  const regions = new Set(filters.region);
-  const markets = new Set(filters.market);
+  return rows.filter((row) => matchesContentRowFilters(filters, row));
+}
 
-  return rows.filter((row) => {
-    if (row.metric_date < startDate || row.metric_date > endDate) return false;
-    if (regions.size > 0 && !regions.has(row.region)) return false;
-    if (markets.size > 0 && !markets.has(row.market)) return false;
-    return true;
-  });
+export function filterContentMetricsByRegionMarket(
+  rows: ContentMetricRecord[],
+  filters: DashboardFilters,
+): ContentMetricRecord[] {
+  return rows.filter(
+    (row) =>
+      matchesRegionFilter(filters, row.region) &&
+      matchesMarketFilter(filters, row.market) &&
+      matchesBrandFilter(filters, row.product_brand),
+  );
+}
+
+/** Load creator rows from data/content.xlsx for charts and rankings. */
+const PROGRAM_MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"] as const;
+
+/**
+ * content.xlsx encodes program month as day-of-month on each row's Date
+ * (day 1 → Jan, day 2 → Feb, … day 6 → Jun). Falls back to calendar month.
+ */
+export function getContentProgramMonthLabel(metricDate: string): string | null {
+  const date = parseDateParam(metricDate);
+  const day = date.getDate();
+  if (day >= 1 && day <= PROGRAM_MONTH_LABELS.length) {
+    return PROGRAM_MONTH_LABELS[day - 1];
+  }
+
+  const monthIndex = date.getMonth();
+  if (monthIndex >= 0 && monthIndex < PROGRAM_MONTH_LABELS.length) {
+    return PROGRAM_MONTH_LABELS[monthIndex];
+  }
+
+  return null;
+}
+
+export function loadContentRowsForCharts(
+  filters: DashboardFilters,
+  filePath = resolveContentPath(),
+): ContentMetricRecord[] {
+  const allRows = loadContentMetrics(filePath);
+  if (!allRows.length) return [];
+
+  const dateFiltered = filterContentMetrics(allRows, filters);
+  if (dateFiltered.length > 0) return dateFiltered;
+
+  // Dashboard dates often reflect activations; still show content from the xlsx.
+  return filterContentMetricsByRegionMarket(allRows, filters);
 }
 
 export function sumContentTotals(rows: ContentMetricRecord[]): ContentTotals {

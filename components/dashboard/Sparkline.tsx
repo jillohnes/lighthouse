@@ -1,13 +1,14 @@
 "use client";
 
 import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { BRAND } from "@/lib/brand-colors";
 
 interface SparklineProps {
   data: number[];
   color?: string;
 }
 
-export function Sparkline({ data, color = "#4A2C1A" }: SparklineProps) {
+export function Sparkline({ data, color = BRAND.maroon }: SparklineProps) {
   const chartData = data.map((value, index) => ({ index, value }));
 
   return (

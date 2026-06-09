@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export type ProgramMetricRow = {
   id: string;
   brand: string;
+  product_brand: string | null;
   region: string;
   market: string;
   metric_date: string;

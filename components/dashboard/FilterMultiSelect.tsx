@@ -62,26 +62,26 @@ export function FilterMultiSelect({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-9 min-w-[150px] items-center justify-between gap-2 rounded-md border border-[#4A2C1A]/15 bg-white py-0 pl-3 pr-2 text-sm font-medium text-[#3B2314] transition-colors hover:border-[#4A2C1A]/30 focus:border-[#4A2C1A]/40 focus:outline-none focus:ring-2 focus:ring-[#4A2C1A]/10"
+        className="flex h-9 min-w-[150px] items-center justify-between gap-2 rounded-md border border-brand/15 bg-white py-0 pl-3 pr-2 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10"
       >
         <span className="truncate">{getDisplayText(value, allLabel)}</span>
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-[#4A2C1A]/40 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-3.5 w-3.5 shrink-0 text-brand/40 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-64 min-w-full overflow-y-auto rounded-md border border-[#4A2C1A]/15 bg-white py-1 shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-64 min-w-full overflow-y-auto rounded-md border border-brand/15 bg-white py-1 shadow-lg">
           <button
             type="button"
             onClick={selectAll}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#3B2314] hover:bg-[#F5F0E8]"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-surface"
           >
             <span
               className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
                 isAllSelected
-                  ? "border-[#4A2C1A] bg-[#4A2C1A] text-white"
-                  : "border-[#4A2C1A]/30"
+                  ? "border-brand bg-brand text-white"
+                  : "border-brand/30"
               }`}
             >
               {isAllSelected && <Check className="h-3 w-3" />}
@@ -89,7 +89,7 @@ export function FilterMultiSelect({
             {allLabel}
           </button>
 
-          <div className="my-1 h-px bg-[#4A2C1A]/10" />
+          <div className="my-1 h-px bg-brand/10" />
 
           {options.map((option) => {
             const selected = value.includes(option);
@@ -98,13 +98,13 @@ export function FilterMultiSelect({
                 key={option}
                 type="button"
                 onClick={() => toggleOption(option)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[#3B2314] hover:bg-[#F5F0E8]"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-surface"
               >
                 <span
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
                     selected
-                      ? "border-[#4A2C1A] bg-[#4A2C1A] text-white"
-                      : "border-[#4A2C1A]/30"
+                      ? "border-brand bg-brand text-white"
+                      : "border-brand/30"
                   }`}
                 >
                   {selected && <Check className="h-3 w-3" />}

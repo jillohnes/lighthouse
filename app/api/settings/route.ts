@@ -31,6 +31,14 @@ function isValidSettings(body: unknown): body is ProgramSettings {
     }
   }
 
+  if (
+    !settings.content ||
+    typeof settings.content.organicEmv !== "number" ||
+    Number.isNaN(settings.content.organicEmv)
+  ) {
+    return false;
+  }
+
   return true;
 }
 

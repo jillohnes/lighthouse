@@ -4,6 +4,12 @@ export const ACTIVATION_TYPES = [
   "Digital Sampling",
 ] as const;
 
+export const ACTIVATION_SECTION_TITLES: Record<ActivationType, string> = {
+  HTC: "Hybrid Community Teams (HCT)",
+  "Brand Experience": "Brand Experiences",
+  "Digital Sampling": "Digital Sampling",
+};
+
 export type ActivationType = (typeof ACTIVATION_TYPES)[number];
 
 export type BudgetMode = "avg_cost" | "total_cost";
@@ -16,9 +22,18 @@ export interface ActivationTypeSettings {
   budget: number;
 }
 
+export interface ContentSettings {
+  organicEmv: number;
+}
+
 export interface ProgramSettings {
   activationTypes: Record<ActivationType, ActivationTypeSettings>;
+  content: ContentSettings;
 }
+
+export const CONTENT_METRIC_KEYS = {
+  organicEmv: "content_organic_emv",
+} as const;
 
 export const TARGET_MODES: Record<ActivationType, TargetMode> = {
   HTC: "per_activation",
@@ -121,6 +136,10 @@ export function getMetricLabel(
   return `${display.label} (${scope})`;
 }
 
+export const DEFAULT_CONTENT_SETTINGS: ContentSettings = {
+  organicEmv: 5_000_000,
+};
+
 export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   activationTypes: {
     HTC: { reach: 1_200, impact: 350, result: 150_000, budget: 2_500 },
@@ -137,6 +156,7 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
       budget: 500_000,
     },
   },
+  content: DEFAULT_CONTENT_SETTINGS,
 };
 
 function slugify(type: ActivationType): string {
@@ -176,6 +196,12 @@ export function settingsToRows(
     );
   }
 
+  rows.push({
+    metric_key: CONTENT_METRIC_KEYS.organicEmv,
+    target_value: settings.content.organicEmv,
+    label: "Organic Earned Media Value (EMV)",
+  });
+
   return rows;
 }
 
@@ -197,6 +223,9 @@ export function rowsToSettings(
     if (result !== undefined) settings.activationTypes[type].result = result;
     if (budget !== undefined) settings.activationTypes[type].budget = budget;
   }
+
+  const organicEmv = lookup.get(CONTENT_METRIC_KEYS.organicEmv);
+  if (organicEmv !== undefined) settings.content.organicEmv = organicEmv;
 
   return settings;
 }

@@ -1,8 +1,10 @@
 import { format } from "date-fns";
+import { ALL_BRANDS_LABEL, BRAND_OPTIONS } from "@/lib/brands";
 import type { DashboardFilters, FilterOptions } from "./types";
 
 export function getDefaultFilters(): DashboardFilters {
   return {
+    brand: ALL_BRANDS_LABEL,
     activationType: [],
     region: [],
     market: [],
@@ -12,6 +14,7 @@ export function getDefaultFilters(): DashboardFilters {
 }
 
 export const FILTER_OPTIONS: FilterOptions = {
+  brands: [...BRAND_OPTIONS],
   activationTypes: ["All Activation Types", "HTC", "Digital Sampling", "Brand Experience"],
   regions: ["All Regions", "Central", "East", "MidWest", "South", "West"],
   markets: [

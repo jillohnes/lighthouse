@@ -6,7 +6,12 @@ import {
 } from "@/lib/settings";
 import { getSupabaseAdmin, type KpiTargetRow } from "@/lib/supabase/server";
 
-const SETTINGS_KEY_PREFIXES = ["htc_", "brand_experience_", "digital_sampling_"];
+const SETTINGS_KEY_PREFIXES = [
+  "htc_",
+  "brand_experience_",
+  "digital_sampling_",
+  "content_",
+];
 
 export async function getProgramSettings(): Promise<ProgramSettings> {
   const supabase = getSupabaseAdmin();

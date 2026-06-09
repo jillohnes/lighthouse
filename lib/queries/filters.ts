@@ -1,3 +1,4 @@
+import { BRAND_OPTIONS } from "@/lib/brands";
 import { CONTENT_BRAND, loadContentMetrics } from "@/lib/content-metrics";
 import { fetchAllContentFilterRows } from "@/lib/queries/content";
 import { fetchAllProgramMetrics } from "@/lib/queries/fetch-all";
@@ -70,6 +71,7 @@ export async function getFilterOptionsFromSupabase(): Promise<FilterOptions | nu
   const dates = rows.map((r) => r.metric_date).sort();
 
   return {
+    brands: [...BRAND_OPTIONS],
     activationTypes: ["All Activation Types", ...activationTypes],
     regions: ["All Regions", ...regions],
     markets: ["All Markets", ...markets],

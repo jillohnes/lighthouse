@@ -1,111 +1,133 @@
 "use client";
 
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
-import { getTargetStatus, STATUS_STYLES } from "@/lib/target-status";
-import type { TargetGauge, TargetStatus } from "@/lib/types";
+import {
+  ACTIVATION_SECTION_TITLES,
+  ACTIVATION_TYPES,
+  type ActivationType,
+} from "@/lib/settings";
+import { STATUS_STYLES } from "@/lib/target-status";
+import type { TargetGauge, TargetMetricKey } from "@/lib/types";
 
 interface TargetsPacingProps {
   targets: TargetGauge[];
   pacingPercent: number;
 }
 
-const GAUGE_GREEN_THRESHOLD = 98;
+interface ProgressRowProps {
+  label: string;
+  actual: string;
+  target: string;
+  percentOfTarget: number;
+  status: TargetGauge["status"];
+  change?: number;
+}
 
-function GaugeChart({
-  percent,
+const METRIC_ORDER: TargetMetricKey[] = ["reach", "impact", "result"];
+
+function ProgressRow({
+  label,
+  actual,
+  target,
+  percentOfTarget,
   status,
-}: {
-  percent: number;
-  status: TargetStatus;
-}) {
+  change = 0,
+}: ProgressRowProps) {
   const colors = STATUS_STYLES[status];
-  const data = [{ value: percent }, { value: 100 - percent }];
+  const barWidth = Math.min(100, percentOfTarget);
 
   return (
-    <div className="relative h-[90px] w-[90px]">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={30}
-            outerRadius={42}
-            startAngle={90}
-            endAngle={-270}
-            dataKey="value"
-            stroke="none"
-          >
-            <Cell fill={colors.fill} />
-            <Cell fill="#F5F0E8" />
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className={`text-lg font-bold ${colors.text}`}>{percent}%</span>
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[11px] font-medium text-brand/60">{label}</p>
+        <p className={`shrink-0 text-[10px] font-semibold ${colors.text}`}>
+          {percentOfTarget}% of target
+        </p>
+      </div>
+
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm font-bold text-foreground">
+          {actual}{" "}
+          <span className="text-xs font-normal text-muted">/ {target}</span>
+        </p>
+        {change < 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-red-500">
+            <TrendingDown className="h-3 w-3" />
+            {change.toFixed(1)}%
+          </span>
+        )}
+        {change > 0 && (
+          <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-medium text-emerald-600">
+            <TrendingUp className="h-3 w-3" />
+            +{change.toFixed(1)}%
+          </span>
+        )}
+      </div>
+
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${colors.bar}`}
+          style={{ width: `${barWidth}%` }}
+        />
       </div>
     </div>
   );
 }
 
-export function TargetsPacing({ targets, pacingPercent }: TargetsPacingProps) {
-  const pacingStatus = getTargetStatus(pacingPercent, 100, GAUGE_GREEN_THRESHOLD);
-  const pacingColors = STATUS_STYLES[pacingStatus];
+function gaugeToRow(target: TargetGauge): ProgressRowProps {
+  return {
+    label: target.label,
+    actual: target.actual,
+    target: target.target,
+    percentOfTarget: target.percentOfTarget,
+    status: target.status,
+    change: target.change,
+  };
+}
 
+function getRowsForType(
+  targets: TargetGauge[],
+  type: ActivationType,
+): ProgressRowProps[] {
+  const byMetric = new Map(
+    targets
+      .filter((target) => target.activationType === type)
+      .map((target) => [target.metricKey, gaugeToRow(target)]),
+  );
+
+  return METRIC_ORDER.map((metricKey) => {
+    const row = byMetric.get(metricKey);
+    if (row) return row;
+    return {
+      label: metricKey === "result" ? "Results" : metricKey.charAt(0).toUpperCase() + metricKey.slice(1),
+      actual: "0",
+      target: "—",
+      percentOfTarget: 0,
+      status: "well-below" as const,
+    };
+  });
+}
+
+export function TargetsPacing({ targets }: TargetsPacingProps) {
   return (
-    <div className="rounded-lg border border-[#4A2C1A]/8 bg-white p-5 shadow-sm">
-      <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-[#3B2314]">
+    <div className="rounded-lg border border-brand/8 bg-white p-5 shadow-sm">
+      <h3 className="mb-5 text-xs font-bold uppercase tracking-wider text-foreground">
         Targets & Pacing Summary
       </h3>
 
-      <div className="flex flex-wrap items-center gap-8">
-        {targets.map((target) => {
-          const colors = STATUS_STYLES[target.status];
-
-          return (
-            <div key={target.label} className="flex items-center gap-3">
-              <GaugeChart percent={target.percent} status={target.status} />
-              <div>
-                <p className="text-[11px] font-medium text-[#4A2C1A]/60">{target.label}</p>
-                <p className="text-sm font-bold text-[#3B2314]">
-                  {target.actual}{" "}
-                  <span className="text-xs font-normal text-[#4A2C1A]/50">
-                    / {target.target}
-                  </span>
-                </p>
-                <p className={`text-[10px] font-semibold ${colors.text}`}>
-                  {target.percentOfTarget}% of target
-                </p>
-                {target.change < 0 && (
-                  <span className="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-medium text-red-500">
-                    <TrendingDown className="h-3 w-3" />
-                    {target.change.toFixed(1)}%
-                  </span>
-                )}
-                {target.change > 0 && (
-                  <span className="mt-0.5 inline-flex items-center gap-0.5 text-[11px] font-medium text-emerald-600">
-                    <TrendingUp className="h-3 w-3" />
-                    +{target.change.toFixed(1)}%
-                  </span>
-                )}
-              </div>
+      <div className="grid grid-cols-3 gap-8">
+        {ACTIVATION_TYPES.map((type) => (
+          <section key={type} className="space-y-4">
+            <h4 className="border-b border-brand/10 pb-2 text-[11px] font-bold uppercase tracking-wider text-brand">
+              {ACTIVATION_SECTION_TITLES[type]}
+            </h4>
+            <div className="space-y-5">
+              {getRowsForType(targets, type).map((row) => (
+                <ProgressRow key={`${type}-${row.label}`} {...row} />
+              ))}
             </div>
-          );
-        })}
-
-        <div className="ml-auto max-w-[200px] flex-1">
-          <p className="mb-2 text-[11px] font-medium text-[#4A2C1A]/60">Pacing to Goal</p>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-[#F5F0E8]">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${pacingColors.bar}`}
-              style={{ width: `${pacingPercent}%` }}
-            />
-          </div>
-          <p className={`mt-1 text-xs font-medium ${pacingColors.text}`}>
-            {pacingPercent}% of Year Elapsed
-          </p>
-        </div>
+          </section>
+        ))}
       </div>
     </div>
   );

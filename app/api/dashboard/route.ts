@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ALL_BRANDS_LABEL, BRAND_OPTIONS, type BrandFilter } from "@/lib/brands";
 import { getDefaultFilters } from "@/lib/data";
 import { parseDateParam } from "@/lib/dates";
 import { getDashboardData } from "@/lib/queries/dashboard";
@@ -12,7 +13,14 @@ function parseList(param: string | null): string[] {
 function parseFilters(searchParams: URLSearchParams): DashboardFilters {
   const defaults = getDefaultFilters();
 
+  const brandParam = searchParams.get("brand");
+  const brand: BrandFilter =
+    brandParam && BRAND_OPTIONS.includes(brandParam as BrandFilter)
+      ? (brandParam as BrandFilter)
+      : ALL_BRANDS_LABEL;
+
   return {
+    brand,
     activationType: parseList(searchParams.get("activationType")),
     region: parseList(searchParams.get("region")),
     market: parseList(searchParams.get("market")),

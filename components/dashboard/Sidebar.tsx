@@ -37,7 +37,7 @@ interface SidebarProps {
 
 export function Sidebar({ activeNav }: SidebarProps) {
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col bg-[#3B2314] text-white">
+    <aside className="flex w-[220px] shrink-0 flex-col bg-brand-darker text-white shadow-lg">
       <div className="border-b border-white/10 px-5 py-5">
         <h1 className="text-sm font-bold tracking-[0.15em]">PROOF & POUR</h1>
       </div>
@@ -48,7 +48,7 @@ export function Sidebar({ activeNav }: SidebarProps) {
             const isActive = item.label === activeNav;
             const className = `flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
               isActive
-                ? "bg-[#5C3D2E] font-medium text-white"
+                ? "bg-brown font-medium text-white"
                 : "text-white/70 hover:bg-white/5 hover:text-white"
             }`;
 
@@ -59,7 +59,7 @@ export function Sidebar({ activeNav }: SidebarProps) {
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
                     {item.badge && (
-                      <span className="rounded bg-[#B5455C] px-1.5 py-0.5 text-[10px] font-semibold uppercase">
+                      <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase">
                         {item.badge}
                       </span>
                     )}
@@ -69,7 +69,7 @@ export function Sidebar({ activeNav }: SidebarProps) {
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
                     {item.badge && (
-                      <span className="rounded bg-[#B5455C] px-1.5 py-0.5 text-[10px] font-semibold uppercase">
+                      <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase">
                         {item.badge}
                       </span>
                     )}

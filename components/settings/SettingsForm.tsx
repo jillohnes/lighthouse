@@ -5,6 +5,7 @@ import { Save } from "lucide-react";
 import {
   ACTIVATION_TYPES,
   BUDGET_LABELS,
+  DEFAULT_CONTENT_SETTINGS,
   DEFAULT_PROGRAM_SETTINGS,
   METRIC_DISPLAY,
   TARGET_MODES,
@@ -35,11 +36,11 @@ interface SettingsFieldProps {
 function SettingsField({ label, hint, value, prefix, onChange }: SettingsFieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-semibold text-[#3B2314]">{label}</label>
-      {hint && <p className="mb-1.5 text-[10px] text-[#4A2C1A]/50">{hint}</p>}
+      <label className="mb-1 block text-xs font-semibold text-foreground">{label}</label>
+      {hint && <p className="mb-1.5 text-[10px] text-muted">{hint}</p>}
       <div className="relative">
         {prefix && (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#4A2C1A]/50">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted">
             {prefix}
           </span>
         )}
@@ -48,7 +49,7 @@ function SettingsField({ label, hint, value, prefix, onChange }: SettingsFieldPr
           inputMode="decimal"
           value={formatNumber(value)}
           onChange={(e) => onChange(parseNumber(e.target.value))}
-          className={`h-9 w-full rounded-md border border-[#4A2C1A]/15 bg-white text-sm text-[#3B2314] focus:border-[#4A2C1A]/40 focus:outline-none focus:ring-2 focus:ring-[#4A2C1A]/10 ${
+          className={`h-9 w-full rounded-md border border-brand/15 bg-white text-sm text-foreground focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10 ${
             prefix ? "pl-7 pr-3" : "px-3"
           }`}
         />
@@ -82,9 +83,9 @@ function ActivationSettingsCard({
       : "Target average cost per activation";
 
   return (
-    <div className="rounded-lg border border-[#4A2C1A]/8 bg-white p-5 shadow-sm">
-      <h3 className="mb-1 text-sm font-bold text-[#3B2314]">{type}</h3>
-      <p className="mb-4 text-xs text-[#4A2C1A]/50">
+    <div className="rounded-lg border border-brand/8 bg-white p-5 shadow-sm">
+      <h3 className="mb-1 text-sm font-bold text-foreground">{type}</h3>
+      <p className="mb-4 text-xs text-muted">
         {type === "Digital Sampling" ? "Off Premise" : "On Premise"} · {scopeLabel} targets
       </p>
 
@@ -127,7 +128,20 @@ export function SettingsForm() {
     fetch("/api/settings")
       .then((res) => res.json())
       .then((json) => {
-        if (json.settings) setSettings(json.settings);
+        if (json.settings) {
+          setSettings({
+            ...DEFAULT_PROGRAM_SETTINGS,
+            ...json.settings,
+            activationTypes: {
+              ...DEFAULT_PROGRAM_SETTINGS.activationTypes,
+              ...json.settings.activationTypes,
+            },
+            content: {
+              ...DEFAULT_CONTENT_SETTINGS,
+              ...json.settings.content,
+            },
+          });
+        }
       })
       .catch(() => setError("Failed to load settings."))
       .finally(() => setLoading(false));
@@ -137,6 +151,13 @@ export function SettingsForm() {
     setSettings((prev) => ({
       ...prev,
       activationTypes: { ...prev.activationTypes, [type]: config },
+    }));
+  }
+
+  function updateContentSettings(organicEmv: number) {
+    setSettings((prev) => ({
+      ...prev,
+      content: { ...prev.content, organicEmv },
     }));
   }
 
@@ -169,7 +190,7 @@ export function SettingsForm() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-[#4A2C1A]/60">
+      <div className="flex h-64 items-center justify-center text-sm text-brand/60">
         Loading settings...
       </div>
     );
@@ -179,8 +200,8 @@ export function SettingsForm() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#3B2314]">Program Targets & Budget</h2>
-          <p className="mt-1 text-sm text-[#4A2C1A]/60">
+          <h2 className="text-xl font-bold text-foreground">Program Targets & Budget</h2>
+          <p className="mt-1 text-sm text-brand/60">
             HTC and Brand Experience targets are per activation. Digital Sampling targets
             are total program. Budget uses total cost for Digital Sampling and average
             activation cost for HTC and Brand Experience.
@@ -190,7 +211,7 @@ export function SettingsForm() {
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="flex shrink-0 items-center gap-2 rounded-md bg-[#4A2C1A] px-4 py-2 text-sm font-medium text-white hover:bg-[#3B2314] disabled:opacity-60"
+          className="flex shrink-0 items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-darker disabled:opacity-60"
         >
           <Save className="h-4 w-4" />
           {saving ? "Saving..." : "Save Settings"}
@@ -209,6 +230,22 @@ export function SettingsForm() {
             onChange={(config) => updateTypeSettings(type, config)}
           />
         ))}
+
+        <div className="rounded-lg border border-brand/8 bg-white p-5 shadow-sm">
+          <h3 className="mb-1 text-sm font-bold text-foreground">Content</h3>
+          <p className="mb-4 text-xs text-muted">
+            Total program targets for creator and social content metrics.
+          </p>
+          <div className="max-w-sm">
+            <SettingsField
+              label="Organic Earned Media Value (EMV)"
+              hint="Full-campaign EMV target in dollars (prorated by selected date range on the dashboard)"
+              value={settings.content.organicEmv}
+              prefix="$"
+              onChange={updateContentSettings}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,7 @@
+import type { BrandFilter } from "@/lib/brands";
+
 export interface DashboardFilters {
+  brand: BrandFilter;
   activationType: string[];
   region: string[];
   market: string[];
@@ -7,6 +10,7 @@ export interface DashboardFilters {
 }
 
 export interface FilterOptions {
+  brands: BrandFilter[];
   activationTypes: string[];
   regions: string[];
   markets: string[];
@@ -15,6 +19,7 @@ export interface FilterOptions {
 }
 
 export type TargetStatus = "above" | "slightly-below" | "well-below";
+export type KpiPlatformIcon = "instagram" | "tiktok";
 
 export interface KpiMetric {
   label: string;
@@ -27,6 +32,9 @@ export interface KpiMetric {
   status: TargetStatus;
   showTarget?: boolean;
   showStatus?: boolean;
+  icons?: KpiPlatformIcon[];
+  comparisonLabel?: string;
+  valueTone?: "positive" | "negative";
 }
 
 export interface MonthlyPerformance {
@@ -34,6 +42,18 @@ export interface MonthlyPerformance {
   reach: number;
   impact: number;
   result: number;
+}
+
+export interface StackedMonthlyPerformance {
+  month: string;
+  line: { reach: number; impact: number; result: number };
+  segments: Record<string, { reach: number; impact: number; result: number }>;
+}
+
+export interface PerformanceDrilldownData {
+  monthly: StackedMonthlyPerformance[];
+  breakdown: BreakdownRow[];
+  takeaway: string;
 }
 
 export interface BreakdownRow {
@@ -53,6 +73,8 @@ export interface BreakdownRow {
   resultPercent?: number;
 }
 
+export type TargetMetricKey = "reach" | "impact" | "result";
+
 export interface TargetGauge {
   label: string;
   target: string;
@@ -61,6 +83,8 @@ export interface TargetGauge {
   percentOfTarget: number;
   status: TargetStatus;
   change: number;
+  activationType: import("@/lib/settings").ActivationType;
+  metricKey: TargetMetricKey;
 }
 
 export interface AiInsight {
@@ -70,16 +94,36 @@ export interface AiInsight {
   description: string;
 }
 
+export type TopMarketMetric = "reach" | "impact" | "result" | "roi";
+export type MarketStatus = "on-track" | "watch" | "at-risk";
+
+export interface TopMarketRow {
+  market: string;
+  reach: number;
+  impact: number;
+  result: number;
+  roi: number;
+  roiPlan: number;
+  roiVsPlan: number;
+  status: MarketStatus;
+}
+
+export interface TopAmbassadorRow {
+  name: string;
+  market: string;
+  organicImpressions: number;
+  paidImpressions: number;
+}
+
 export interface DashboardData {
   kpis: KpiMetric[];
-  byActivationType: {
-    monthly: MonthlyPerformance[];
-    breakdown: BreakdownRow[];
-  };
-  byLocationType: {
-    monthly: MonthlyPerformance[];
-    breakdown: BreakdownRow[];
-  };
+  secondaryKpis: KpiMetric[];
+  byActivationType: PerformanceDrilldownData;
+  byLocationType: PerformanceDrilldownData;
+  impressionsByMonth: PerformanceDrilldownData;
+  contentByMonth: PerformanceDrilldownData;
+  topMarkets: TopMarketRow[];
+  topAmbassadors: TopAmbassadorRow[];
   targets: TargetGauge[];
   pacingPercent: number;
   insights: AiInsight[];

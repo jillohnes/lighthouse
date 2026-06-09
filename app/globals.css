@@ -2,17 +2,50 @@
 @import "react-day-picker/style.css";
 
 :root {
-  --background: #f5f0e8;
-  --foreground: #3b2314;
-  --brand-brown: #4a2c1a;
-  --brand-brown-dark: #3b2314;
-  --brand-cream: #f5f0e8;
-  --brand-accent: #b5455c;
+  /* Maroon scale — column 4, core brand */
+  --brand-50: #fbf3f5;
+  --brand-100: #f8e8ec;
+  --brand-200: #e8c4ce;
+  --brand-300: #c97a92;
+  --brand-400: #a84562;
+  --brand-500: #7b2340;
+  --brand-600: #661d35;
+  --brand-700: #5c1f30;
+  --brand-800: #4a1525;
+  --brand-900: #3a101d;
+
+  /* Brown — column 5 */
+  --brown-500: #5c3d2e;
+  --brown-600: #4a3028;
+
+  /* Accents — columns 6 & 8 */
+  --accent: #b8336a;
+  --accent-terracotta: #c4623a;
+  --accent-gold: #c49a5a;
+
+  /* Neutrals — columns 1 & greyscale */
+  --surface: #f5efe6;
+  --surface-raised: #ffffff;
+  --foreground: #2d1a1f;
+  --muted: #6b5258;
+
+  --background: var(--surface);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand-500);
+  --color-brand-dark: var(--brand-700);
+  --color-brand-darker: var(--brand-900);
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-accent: var(--accent);
+  --color-accent-terracotta: var(--accent-terracotta);
+  --color-accent-gold: var(--accent-gold);
+  --color-surface: var(--surface);
+  --color-brown: var(--brown-500);
+  --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -23,10 +56,9 @@ body {
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
-/* Override react-day-picker defaults to match dashboard theme */
 .rdp-root {
-  --rdp-accent-color: #4a2c1a;
-  --rdp-accent-background-color: #f5f0e8;
+  --rdp-accent-color: var(--brand-500);
+  --rdp-accent-background-color: var(--brand-50);
   --rdp-day-height: 36px;
   --rdp-day-width: 36px;
 }

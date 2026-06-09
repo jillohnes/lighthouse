@@ -7,7 +7,7 @@ interface AppShellProps {
 
 export function AppShell({ activeNav, children }: AppShellProps) {
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F5F0E8]">
+    <div className="flex h-screen overflow-hidden bg-surface">
       <Sidebar activeNav={activeNav} />
       <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
     </div>

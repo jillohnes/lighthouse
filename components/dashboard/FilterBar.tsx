@@ -7,6 +7,7 @@ import type { DashboardFilters, FilterOptions } from "@/lib/types";
 import { DateRangePicker } from "./DateRangePicker";
 import { FilterField } from "./FilterField";
 import { FilterMultiSelect } from "./FilterMultiSelect";
+import { FilterSelect } from "./FilterSelect";
 
 interface FilterBarProps {
   filters: DashboardFilters;
@@ -45,7 +46,16 @@ export function FilterBar({ filters, onChange, onBatchChange }: FilterBarProps) 
   }
 
   return (
-    <div className="flex items-end gap-3 rounded-lg border border-[#4A2C1A]/10 bg-white px-4 py-2.5 shadow-sm">
+    <div className="flex items-end gap-3 rounded-lg border border-brand/10 bg-white px-4 py-2.5 shadow-sm">
+      <FilterField label="Brand">
+        <FilterSelect
+          label="Brand"
+          value={filters.brand}
+          options={options.brands}
+          onChange={(v) => onChange("brand", v)}
+        />
+      </FilterField>
+
       <FilterField label="Activation Type">
         <FilterMultiSelect
           label="Activation Type"
@@ -76,7 +86,7 @@ export function FilterBar({ filters, onChange, onBatchChange }: FilterBarProps) 
         />
       </FilterField>
 
-      <div className="mb-2.5 h-5 w-px bg-[#4A2C1A]/10" />
+      <div className="mb-2.5 h-5 w-px bg-brand/10" />
 
       <FilterField label="From">
         <DateRangePicker

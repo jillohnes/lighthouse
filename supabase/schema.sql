@@ -3,6 +3,7 @@
 create table if not exists program_metrics (
   id uuid primary key default gen_random_uuid(),
   brand text not null,
+  product_brand text,
   region text not null,
   market text not null,
   metric_date date not null,
@@ -21,6 +22,9 @@ create table if not exists program_metrics (
 
 create index if not exists idx_program_metrics_filters
   on program_metrics (brand, region, market, metric_date);
+
+create index if not exists idx_program_metrics_product_brand
+  on program_metrics (product_brand);
 
 create index if not exists idx_program_metrics_channel
   on program_metrics (channel);
@@ -78,7 +82,8 @@ insert into kpi_targets (metric_key, target_value, label) values
   ('digital_sampling_reach', 1500000, 'Reach (QR Code Scans) (Total Program)'),
   ('digital_sampling_impact', 500000, 'Impact (Redemptions) (Total Program)'),
   ('digital_sampling_result', 1500000, 'Results (Sales) (Total Program)'),
-  ('digital_sampling_budget', 500000, 'Total Cost Budget')
+  ('digital_sampling_budget', 500000, 'Total Cost Budget'),
+  ('content_organic_emv', 5000000, 'Organic Earned Media Value (EMV)')
 on conflict (metric_key) do nothing;
 
 -- Allow service role full access (tighten with RLS before production)

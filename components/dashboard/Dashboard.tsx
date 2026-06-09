@@ -1,30 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Share2 } from "lucide-react";
 import { getDefaultFilters } from "@/lib/data";
+import { formatCurrency } from "@/lib/format";
 import { formatDateParam, normalizeLocalDate, parseDateParam } from "@/lib/dates";
+import {
+  DEFAULT_DRILLDOWN_ORDER,
+  loadDrilldownOrder,
+  loadKpiOrder,
+  loadSecondaryKpiOrder,
+  mergeKpiOrder,
+  saveDrilldownOrder,
+  saveKpiOrder,
+  saveSecondaryKpiOrder,
+  type DrilldownSectionId,
+} from "@/lib/dashboard-layout";
 import type { DashboardData, DashboardFilters, FilterOptions } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { AiInsights } from "./AiInsights";
+import { DrilldownList, type DrilldownSectionData } from "./DrilldownList";
+import { PerformanceDrilldown } from "./PerformanceDrilldown";
 import { FilterBar } from "./FilterBar";
 import { KpiCards } from "./KpiCards";
-import { PerformanceDrilldown } from "./PerformanceDrilldown";
 import { TargetsPacing } from "./TargetsPacing";
-
-const SUB_NAV_TABS = [
-  "Overview",
-  "By Activation Type",
-  "By Location Type",
-  "Targets & Pacing",
-  "Historical Performance",
-];
+import { TopAmbassadors } from "./TopAmbassadors";
+import { TopMarkets } from "./TopMarkets";
 
 function buildQueryString(filters: DashboardFilters): string {
   const params = new URLSearchParams({
     startDate: formatDateParam(filters.startDate),
     endDate: formatDateParam(filters.endDate),
   });
+  if (filters.brand !== "All Brands") {
+    params.set("brand", filters.brand);
+  }
   if (filters.activationType.length) {
     params.set("activationType", filters.activationType.join(","));
   }
@@ -39,10 +49,14 @@ function buildQueryString(filters: DashboardFilters): string {
 
 export function Dashboard() {
   const [filters, setFilters] = useState<DashboardFilters>(getDefaultFilters);
-  const [activeTab, setActiveTab] = useState("Overview");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [kpiOrder, setKpiOrder] = useState<string[]>([]);
+  const [secondaryKpiOrder, setSecondaryKpiOrder] = useState<string[]>([]);
+  const [drilldownOrder, setDrilldownOrder] = useState<DrilldownSectionId[]>(
+    DEFAULT_DRILLDOWN_ORDER,
+  );
 
   const fetchData = useCallback(async (currentFilters: DashboardFilters) => {
     setLoading(true);
@@ -83,6 +97,60 @@ export function Dashboard() {
     fetchData(filters);
   }, [filters, fetchData]);
 
+  useEffect(() => {
+    setDrilldownOrder(loadDrilldownOrder());
+  }, []);
+
+  useEffect(() => {
+    if (!data?.kpis.length) return;
+    const labels = data.kpis.map((kpi) => kpi.label);
+    setKpiOrder((prev) => {
+      const stored = prev.length ? prev : loadKpiOrder();
+      return mergeKpiOrder(stored, labels);
+    });
+  }, [data?.kpis]);
+
+  useEffect(() => {
+    if (kpiOrder.length) saveKpiOrder(kpiOrder);
+  }, [kpiOrder]);
+
+  useEffect(() => {
+    if (!data?.secondaryKpis.length) return;
+    const labels = data.secondaryKpis.map((kpi) => kpi.label);
+    setSecondaryKpiOrder((prev) => {
+      const stored = prev.length ? prev : loadSecondaryKpiOrder();
+      return mergeKpiOrder(stored, labels);
+    });
+  }, [data?.secondaryKpis]);
+
+  useEffect(() => {
+    if (secondaryKpiOrder.length) saveSecondaryKpiOrder(secondaryKpiOrder);
+  }, [secondaryKpiOrder]);
+
+  useEffect(() => {
+    saveDrilldownOrder(drilldownOrder);
+  }, [drilldownOrder]);
+
+  const drilldownSections = useMemo(() => {
+    if (!data) return null;
+    return {
+      "activation-type": {
+        title: "Performance by Activation Type",
+        monthly: data.byActivationType.monthly,
+        breakdown: data.byActivationType.breakdown,
+        breakdownLabel: "By Activation Type",
+        takeaway: data.byActivationType.takeaway,
+      },
+      "location-type": {
+        title: "Performance by Location Type",
+        monthly: data.byLocationType.monthly,
+        breakdown: data.byLocationType.breakdown,
+        breakdownLabel: "By Location Type",
+        takeaway: data.byLocationType.takeaway,
+      },
+    } satisfies Record<DrilldownSectionId, DrilldownSectionData>;
+  }, [data]);
+
   function applyFilterUpdates(updates: Partial<DashboardFilters>) {
     setFilters((prev) => {
       const next = { ...prev, ...updates };
@@ -108,29 +176,27 @@ export function Dashboard() {
 
   return (
     <AppShell activeNav="Dashboard">
-        <header className="shrink-0 border-b border-[#4A2C1A]/10 bg-[#F5F0E8] px-6 py-4">
+        <header className="shrink-0 border-b border-brand/10 bg-surface px-6 py-4">
           <div className="flex items-center justify-between gap-6">
-            <h2 className="shrink-0 text-xl font-bold text-[#3B2314]">
-              Trade Program Dashboard
-            </h2>
-
-            <FilterBar
-              filters={filters}
-              onChange={updateFilter}
-              onBatchChange={applyFilterUpdates}
-            />
+            <div className="min-w-0 flex-1">
+              <FilterBar
+                filters={filters}
+                onChange={updateFilter}
+                onBatchChange={applyFilterUpdates}
+              />
+            </div>
 
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-md border border-[#4A2C1A]/20 px-3 py-2 text-sm font-medium text-[#4A2C1A] hover:bg-white"
+                className="flex items-center gap-1.5 rounded-md border border-brand/20 px-3 py-2 text-sm font-medium text-brand hover:bg-white"
               >
                 <Share2 className="h-4 w-4" />
                 Share
               </button>
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-md border border-[#4A2C1A]/20 px-3 py-2 text-sm font-medium text-[#4A2C1A] hover:bg-white"
+                className="flex items-center gap-1.5 rounded-md border border-brand/20 px-3 py-2 text-sm font-medium text-brand hover:bg-white"
               >
                 <Download className="h-4 w-4" />
                 Export
@@ -141,50 +207,66 @@ export function Dashboard() {
           {error && !loading && (
             <p className="mt-2 text-xs text-amber-700">{error}</p>
           )}
-
-          <div className="mt-4 flex gap-2">
-            {SUB_NAV_TABS.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                  activeTab === tab
-                    ? "bg-[#4A2C1A] text-white"
-                    : "border border-[#4A2C1A]/20 bg-white text-[#4A2C1A] hover:bg-[#F5F0E8]"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="flex h-64 items-center justify-center text-sm text-[#4A2C1A]/60">
+            <div className="flex h-64 items-center justify-center text-sm text-brand/60">
               Loading dashboard...
             </div>
           ) : data ? (
             <>
-              <div className="mb-5">
-                <KpiCards kpis={data.kpis} />
+              <div className="mb-5 space-y-3">
+                <KpiCards
+                  kpis={data.kpis}
+                  order={kpiOrder}
+                  onReorder={setKpiOrder}
+                  columns={6}
+                />
+                {data.secondaryKpis.length > 0 && (
+                  <KpiCards
+                    kpis={data.secondaryKpis}
+                    order={secondaryKpiOrder}
+                    onReorder={setSecondaryKpiOrder}
+                    columns={9}
+                  />
+                )}
               </div>
 
               <div className="flex items-start gap-5">
                 <div className="min-w-0 flex-1 space-y-5">
-                  <PerformanceDrilldown
-                    title="Performance by Activation Type"
-                    monthly={data.byActivationType.monthly}
-                    breakdown={data.byActivationType.breakdown}
-                    breakdownLabel="By Activation Type"
-                  />
-                  <PerformanceDrilldown
-                    title="Performance by Location Type"
-                    monthly={data.byLocationType.monthly}
-                    breakdown={data.byLocationType.breakdown}
-                    breakdownLabel="By Location Type"
-                  />
+                  {drilldownSections && (
+                    <DrilldownList
+                      order={drilldownOrder}
+                      onReorder={setDrilldownOrder}
+                      sections={drilldownSections}
+                    />
+                  )}
+                  <div className="grid grid-cols-2 gap-5">
+                    <PerformanceDrilldown
+                      title="Organic and Paid Impressions by Month"
+                      monthly={data.impressionsByMonth.monthly}
+                      breakdown={data.impressionsByMonth.breakdown}
+                      breakdownLabel="By Impression Type"
+                      takeaway={data.impressionsByMonth.takeaway}
+                      compact
+                      showMetricToggle={false}
+                      lineLabel="Total Impressions"
+                    />
+                    <PerformanceDrilldown
+                      title="Total EMV and Media Efficiency by Month"
+                      monthly={data.contentByMonth.monthly}
+                      breakdown={data.contentByMonth.breakdown}
+                      breakdownLabel="By Value Type"
+                      takeaway={data.contentByMonth.takeaway}
+                      compact
+                      showMetricToggle={false}
+                      lineLabel="Total Value"
+                      valueFormatter={formatCurrency}
+                    />
+                  </div>
+                  <TopMarkets markets={data.topMarkets} />
+                  <TopAmbassadors ambassadors={data.topAmbassadors} />
                   <TargetsPacing
                     targets={data.targets}
                     pacingPercent={data.pacingPercent}
@@ -197,7 +279,7 @@ export function Dashboard() {
               </div>
             </>
           ) : (
-            <div className="flex h-64 items-center justify-center text-sm text-[#4A2C1A]/60">
+            <div className="flex h-64 items-center justify-center text-sm text-brand/60">
               {error ?? "No data available."}
             </div>
           )}
