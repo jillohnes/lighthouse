@@ -1,4 +1,5 @@
 import { ALL_BRANDS_LABEL } from "@/lib/brands";
+import { normalizeActivationType } from "@/lib/settings";
 import { formatDateParam } from "@/lib/dates";
 import type { DashboardFilters } from "@/lib/types";
 
@@ -44,7 +45,20 @@ export function matchesActivationTypeFilter(
   activationType: string,
 ): boolean {
   if (filters.activationType.length === 0) return true;
-  return filters.activationType.includes(activationType);
+  const rowType = normalizeActivationType(activationType);
+  return filters.activationType.some(
+    (selected) => normalizeActivationType(selected) === rowType,
+  );
+}
+
+function activationTypeFilterValues(selectedTypes: string[]): string[] {
+  const values = new Set<string>();
+  for (const selected of selectedTypes) {
+    const normalized = normalizeActivationType(selected);
+    values.add(normalized);
+    if (normalized === "HCT") values.add("HTC");
+  }
+  return [...values];
 }
 
 export function matchesContentRowFilters(
@@ -113,7 +127,7 @@ export function applyProgramMetricFilters<
   }
 
   if (applyActivationType && filters.activationType.length > 0) {
-    query = query.in("brand", filters.activationType);
+    query = query.in("brand", activationTypeFilterValues(filters.activationType));
   }
 
   if (filters.region.length > 0) {

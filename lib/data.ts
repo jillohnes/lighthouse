@@ -15,7 +15,7 @@ export function getDefaultFilters(): DashboardFilters {
 
 export const FILTER_OPTIONS: FilterOptions = {
   brands: [...BRAND_OPTIONS],
-  activationTypes: ["All Activation Types", "HTC", "Digital Sampling", "Brand Experience"],
+  activationTypes: ["All Activation Types", "HCT", "Digital Sampling", "Brand Experience"],
   regions: ["All Regions", "Central", "East", "MidWest", "South", "West"],
   markets: [
     "All Markets",

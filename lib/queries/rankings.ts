@@ -1,15 +1,24 @@
 import type { DecodedActivation } from "@/lib/activation-metrics";
-import { prorateRoiTarget } from "@/lib/campaign";
+import { prorateCampaignTarget, prorateRoiTarget } from "@/lib/campaign";
 import type { ContentMetricRecord } from "@/lib/content-metrics";
+import {
+  computeContentValueForRows,
+  resolveGlobalCpm,
+} from "@/lib/queries/content-performance";
 import {
   computeSalesTarget,
   computeSpendTarget,
+  getTypeRows,
 } from "@/lib/metric-comparison";
 import {
   fetchContentAmbassadorRows,
   fetchContentRecordsForCharts,
 } from "@/lib/queries/content";
-import type { ActivationType, ProgramSettings } from "@/lib/settings";
+import {
+  ACTIVATION_TYPES,
+  type ActivationType,
+  type ProgramSettings,
+} from "@/lib/settings";
 import {
   TARGET_GREEN_THRESHOLD,
   TARGET_YELLOW_THRESHOLD,
@@ -23,17 +32,64 @@ import type {
 
 const TOP_N = 10;
 
+type MarketContentValue = ReturnType<typeof computeContentValueForRows>;
+
+function computeMarketActivationRoas(
+  marketRows: DecodedActivation[],
+  settings: ProgramSettings,
+  marketContent: MarketContentValue,
+): TopMarketRow["activationRoas"] {
+  const activationRoas: TopMarketRow["activationRoas"] = {
+    HCT: null,
+    "Brand Experience": null,
+    "Digital Sampling": null,
+  };
+  const emailOptInValuePerOptIn =
+    settings.activationTypes["Digital Sampling"].emailOptInValue;
+
+  for (const type of ACTIVATION_TYPES) {
+    const typeRows = getTypeRows(marketRows, type);
+    if (!typeRows.length) continue;
+
+    const spend = typeRows.reduce((sum, row) => sum + row.cost, 0);
+    const sales = typeRows.reduce((sum, row) => sum + row.sales, 0);
+
+    if (type === "HCT") {
+      const numerator =
+        sales + marketContent.organicEmv + marketContent.mediaEfficiency;
+      const denominator = spend + marketContent.paidBoostTotal;
+      activationRoas[type] =
+        denominator > 0 ? (numerator / denominator) * 100 : 0;
+      continue;
+    }
+
+    if (type === "Digital Sampling") {
+      const emailOptInValue =
+        typeRows.reduce((sum, row) => sum + row.opt_ins, 0) *
+        emailOptInValuePerOptIn;
+      const numerator = sales + emailOptInValue;
+      activationRoas[type] = spend > 0 ? (numerator / spend) * 100 : 0;
+      continue;
+    }
+
+    activationRoas[type] = spend > 0 ? (sales / spend) * 100 : 0;
+  }
+
+  return activationRoas;
+}
+
 function getMarketStatus(roiVsPlan: number): MarketStatus {
   if (roiVsPlan >= TARGET_GREEN_THRESHOLD) return "on-track";
   if (roiVsPlan >= TARGET_YELLOW_THRESHOLD) return "watch";
   return "at-risk";
 }
 
-export function buildTopMarkets(
+export function buildAllMarkets(
   rows: DecodedActivation[],
   settings: ProgramSettings,
   applicableTypes: ActivationType[],
   filters: DashboardFilters,
+  contentRecords: ContentMetricRecord[] = [],
 ): TopMarketRow[] {
   const byMarket = new Map<
     string,
@@ -60,9 +116,28 @@ export function buildTopMarkets(
     byMarket.set(row.market, existing);
   }
 
+  const globalCpm = resolveGlobalCpm(contentRecords);
+  const totalActivations = rows.length;
+  const globalEmvTarget = prorateCampaignTarget(
+    settings.content.organicEmv,
+    filters,
+  );
+
+  const contentByMarket = new Map<string, ContentMetricRecord[]>();
+  for (const row of contentRecords) {
+    if (!row.market) continue;
+    const existing = contentByMarket.get(row.market) ?? [];
+    existing.push(row);
+    contentByMarket.set(row.market, existing);
+  }
+
   return Array.from(byMarket.entries())
     .map(([market, totals]) => {
       const marketRows = rows.filter((row) => row.market === market);
+      const marketContent = computeContentValueForRows(
+        contentByMarket.get(market) ?? [],
+        globalCpm,
+      );
       const salesTarget = computeSalesTarget(
         marketRows,
         settings,
@@ -73,9 +148,21 @@ export function buildTopMarkets(
         settings,
         applicableTypes,
       );
-      const roi = totals.spend > 0 ? (totals.result / totals.spend) * 100 : 0;
+      const marketEmvTarget =
+        totalActivations > 0
+          ? globalEmvTarget * (marketRows.length / totalActivations)
+          : 0;
+
+      const roasNumerator =
+        totals.result +
+        marketContent.organicEmv +
+        marketContent.mediaEfficiency;
+      const roi =
+        totals.spend > 0 ? (roasNumerator / totals.spend) * 100 : 0;
+
+      const roasTargetNumerator = salesTarget + marketEmvTarget;
       const fullRoiPlan =
-        spendTarget > 0 ? (salesTarget / spendTarget) * 100 : 0;
+        spendTarget > 0 ? (roasTargetNumerator / spendTarget) * 100 : 0;
       const roiPlan = prorateRoiTarget(fullRoiPlan, filters);
       const roiVsPlan =
         roiPlan > 0 ? Math.round((roi / roiPlan) * 100) : 0;
@@ -89,10 +176,14 @@ export function buildTopMarkets(
         roiPlan,
         roiVsPlan,
         status: getMarketStatus(roiVsPlan),
+        activationRoas: computeMarketActivationRoas(
+          marketRows,
+          settings,
+          marketContent,
+        ),
       };
     })
-    .sort((a, b) => b.result - a.result)
-    .slice(0, TOP_N);
+    .sort((a, b) => b.result - a.result);
 }
 
 function buildTopAmbassadorsFromContent(

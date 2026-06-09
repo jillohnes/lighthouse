@@ -1,5 +1,6 @@
 import {
   decodeActivation,
+  loadActivationRowsForDashboard,
   loadFilteredActivationsAsProgramRows,
   type DecodedActivation,
 } from "@/lib/activation-metrics";
@@ -10,6 +11,7 @@ import {
   buildLocationBreakdown,
   compareTypeMetric,
   computeKpiMetrics,
+  computeOptInMetrics,
   formatMetricDisplay,
   getTypeRows,
 } from "@/lib/metric-comparison";
@@ -40,12 +42,18 @@ import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/server";
 import { fetchAllProgramMetrics } from "@/lib/queries/fetch-all";
 import { generateChartTakeaway } from "@/lib/chart-takeaway";
 import { getContentChartData } from "@/lib/queries/content-charts";
-import { buildTopMarkets, getTopAmbassadors } from "@/lib/queries/rankings";
+import { FALLBACK_CPM } from "@/lib/queries/content-performance";
+import { buildKpiTileLayout } from "@/lib/queries/kpi-tiles";
+import {
+  buildAllMarkets,
+  getTopAmbassadors,
+} from "@/lib/queries/rankings";
 import { applyProgramMetricFilters } from "@/lib/query-filters";
 import type {
   DashboardData,
   DashboardFilters,
   KpiMetric,
+  PerformanceDrilldownData,
   StackedMonthlyPerformance,
   TargetGauge,
 } from "@/lib/types";
@@ -209,6 +217,16 @@ function buildDrilldownData(
   };
 }
 
+export function buildPerformanceDrilldown(
+  rows: DecodedActivation[],
+  groupField: "activation_type" | "location_type",
+  breakdown: ReturnType<typeof groupBreakdown>,
+  dimension: "activation" | "location",
+  filters: DashboardFilters,
+): PerformanceDrilldownData {
+  return buildDrilldownData(rows, groupField, breakdown, dimension, filters);
+}
+
 function groupBreakdown(
   rows: DecodedActivation[],
   field: "activation_type" | "location_type",
@@ -277,7 +295,6 @@ function generateInsights(rows: DecodedActivation[], filters: DashboardFilters) 
 }
 
 const ENG_RATE_TARGET = 0.03;
-const FALLBACK_CPM = 10;
 
 function formatRatePercent(value: number, decimals = 1): string {
   return `${(value * 100).toFixed(decimals)}%`;
@@ -288,12 +305,11 @@ function formatUnitCurrency(value: number): string {
 }
 
 function formatSignedCurrency(value: number): string {
-  if (value === 0) return formatCurrency(0);
-  const sign = value > 0 ? "+" : "-";
-  return `${sign}${formatCurrency(Math.abs(value))}`;
+  if (value < 0) return `-${formatCurrency(Math.abs(value))}`;
+  return formatCurrency(value);
 }
 
-function computeContentPerformanceMetrics(
+export function computeContentPerformanceMetrics(
   contentRows: ContentMetricRecord[],
   contentTotals: ContentTotals,
 ) {
@@ -367,6 +383,7 @@ function computeContentPerformanceMetrics(
     avgCtrBenchmark,
     avgCpc,
     avgCpcBenchmark,
+    paidBoostTotal,
     organicEmv,
     mediaEfficiency,
   };
@@ -545,6 +562,10 @@ export async function getDashboardData(
     kpiMetrics.spend.actual > 0
       ? (roiNumerator / kpiMetrics.spend.actual) * 100
       : 0;
+  const optIns = computeOptInMetrics(
+    decoded,
+    settings.activationTypes["Digital Sampling"].emailOptInValue,
+  );
 
   const sparkline = [62, 68, 71, 75, 79, 84, 87];
 
@@ -622,6 +643,30 @@ export async function getDashboardData(
       targetLabel: `${kpiMetrics.roi.target.toFixed(1)}%`,
       status: getTargetStatus(roiActual, kpiMetrics.roi.target),
     },
+    {
+      label: "Number of Opt Ins",
+      value: formatNumber(optIns.count),
+      change: 0,
+      sparkline,
+      actual: optIns.count,
+      target: 0,
+      targetLabel: "",
+      status: "above" as const,
+      showTarget: false,
+      showStatus: false,
+    },
+    {
+      label: "Opt In Value",
+      value: formatCurrency(optIns.value),
+      change: 0,
+      sparkline,
+      actual: optIns.value,
+      target: 0,
+      targetLabel: "",
+      status: "above" as const,
+      showTarget: false,
+      showStatus: false,
+    },
   ];
 
   const activationBreakdown = buildActivationBreakdown(decoded, settings);
@@ -639,8 +684,19 @@ export async function getDashboardData(
     settings,
     filters,
   );
+  const excelRecords = loadActivationRowsForDashboard(filters);
+  const kpiTileLayout = buildKpiTileLayout(
+    decoded,
+    excelRecords,
+    contentTotals,
+    contentPerformance,
+    settings,
+    applicableTypes,
+    filters,
+  );
 
   return {
+    kpiTileLayout,
     kpis,
     secondaryKpis,
     byActivationType: buildDrilldownData(
@@ -659,7 +715,13 @@ export async function getDashboardData(
     ),
     impressionsByMonth: contentCharts.impressionsByMonth,
     contentByMonth: contentCharts.contentByMonth,
-    topMarkets: buildTopMarkets(decoded, settings, applicableTypes, filters),
+    mapMarkets: buildAllMarkets(
+      decoded,
+      settings,
+      applicableTypes,
+      filters,
+      contentRecords,
+    ),
     topAmbassadors,
     targets: targetGauges,
     pacingPercent,

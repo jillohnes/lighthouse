@@ -1,14 +1,21 @@
 export const ACTIVATION_TYPES = [
-  "HTC",
+  "HCT",
   "Brand Experience",
   "Digital Sampling",
 ] as const;
 
 export const ACTIVATION_SECTION_TITLES: Record<ActivationType, string> = {
-  HTC: "Hybrid Community Teams (HCT)",
+  HCT: "Hybrid Community Teams",
   "Brand Experience": "Brand Experiences",
   "Digital Sampling": "Digital Sampling",
 };
+
+/** Legacy imports and DB rows may still use "HTC". */
+export function normalizeActivationType(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed === "HTC") return "HCT";
+  return trimmed;
+}
 
 export type ActivationType = (typeof ACTIVATION_TYPES)[number];
 
@@ -20,6 +27,10 @@ export interface ActivationTypeSettings {
   impact: number;
   result: number;
   budget: number;
+  /** Digital Sampling only — total program email opt-in count goal. */
+  emailOptIns: number;
+  /** Digital Sampling only — dollar value assigned to each email opt-in. */
+  emailOptInValue: number;
 }
 
 export interface ContentSettings {
@@ -36,19 +47,19 @@ export const CONTENT_METRIC_KEYS = {
 } as const;
 
 export const TARGET_MODES: Record<ActivationType, TargetMode> = {
-  HTC: "per_activation",
+  HCT: "per_activation",
   "Brand Experience": "per_activation",
   "Digital Sampling": "total_program",
 };
 
 export const BUDGET_MODES: Record<ActivationType, BudgetMode> = {
-  HTC: "avg_cost",
+  HCT: "avg_cost",
   "Brand Experience": "avg_cost",
   "Digital Sampling": "total_cost",
 };
 
 export const BUDGET_LABELS: Record<ActivationType, string> = {
-  HTC: "Avg Activation Cost",
+  HCT: "Avg Activation Cost",
   "Brand Experience": "Avg Activation Cost",
   "Digital Sampling": "Total Cost Budget",
 };
@@ -71,7 +82,7 @@ export const METRIC_DISPLAY: Record<
   ActivationType,
   Record<MetricKey, MetricDisplayConfig>
 > = {
-  HTC: {
+  HCT: {
     reach: {
       label: "Reach (People Engaged)",
       hint: "Target people engaged per activation",
@@ -140,20 +151,34 @@ export const DEFAULT_CONTENT_SETTINGS: ContentSettings = {
   organicEmv: 5_000_000,
 };
 
+const EMPTY_EMAIL_OPT_IN_SETTINGS = {
+  emailOptIns: 0,
+  emailOptInValue: 0,
+} as const;
+
 export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   activationTypes: {
-    HTC: { reach: 1_200, impact: 350, result: 150_000, budget: 2_500 },
+    HCT: {
+      reach: 1_200,
+      impact: 350,
+      result: 150_000,
+      budget: 2_500,
+      ...EMPTY_EMAIL_OPT_IN_SETTINGS,
+    },
     "Brand Experience": {
       reach: 1_800,
       impact: 450,
       result: 220_000,
       budget: 4_500,
+      ...EMPTY_EMAIL_OPT_IN_SETTINGS,
     },
     "Digital Sampling": {
       reach: 1_500_000,
       impact: 500_000,
       result: 1_500_000,
       budget: 500_000,
+      emailOptIns: 150_000,
+      emailOptInValue: 10,
     },
   },
   content: DEFAULT_CONTENT_SETTINGS,
@@ -194,6 +219,21 @@ export function settingsToRows(
         label: BUDGET_LABELS[type],
       },
     );
+
+    if (type === "Digital Sampling") {
+      rows.push(
+        {
+          metric_key: `${slug}_email_opt_ins`,
+          target_value: config.emailOptIns,
+          label: "Email Opt Ins (Total Program)",
+        },
+        {
+          metric_key: `${slug}_email_opt_in_value`,
+          target_value: config.emailOptInValue,
+          label: "Email Opt In Value (Per Opt In)",
+        },
+      );
+    }
   }
 
   rows.push({
@@ -213,15 +253,35 @@ export function rowsToSettings(
 
   for (const type of ACTIVATION_TYPES) {
     const slug = slugify(type);
-    const reach = lookup.get(`${slug}_reach`);
-    const impact = lookup.get(`${slug}_impact`);
-    const result = lookup.get(`${slug}_result`);
-    const budget = lookup.get(`${slug}_budget`);
+    const legacySlug = type === "HCT" ? "htc" : null;
+    const reach =
+      lookup.get(`${slug}_reach`) ??
+      (legacySlug ? lookup.get(`${legacySlug}_reach`) : undefined);
+    const impact =
+      lookup.get(`${slug}_impact`) ??
+      (legacySlug ? lookup.get(`${legacySlug}_impact`) : undefined);
+    const result =
+      lookup.get(`${slug}_result`) ??
+      (legacySlug ? lookup.get(`${legacySlug}_result`) : undefined);
+    const budget =
+      lookup.get(`${slug}_budget`) ??
+      (legacySlug ? lookup.get(`${legacySlug}_budget`) : undefined);
 
     if (reach !== undefined) settings.activationTypes[type].reach = reach;
     if (impact !== undefined) settings.activationTypes[type].impact = impact;
     if (result !== undefined) settings.activationTypes[type].result = result;
     if (budget !== undefined) settings.activationTypes[type].budget = budget;
+
+    if (type === "Digital Sampling") {
+      const emailOptIns = lookup.get(`${slug}_email_opt_ins`);
+      const emailOptInValue = lookup.get(`${slug}_email_opt_in_value`);
+      if (emailOptIns !== undefined) {
+        settings.activationTypes[type].emailOptIns = emailOptIns;
+      }
+      if (emailOptInValue !== undefined) {
+        settings.activationTypes[type].emailOptInValue = emailOptInValue;
+      }
+    }
   }
 
   const organicEmv = lookup.get(CONTENT_METRIC_KEYS.organicEmv);
@@ -234,5 +294,8 @@ export function getApplicableTypes(
   selectedTypes: string[],
 ): ActivationType[] {
   if (selectedTypes.length === 0) return [...ACTIVATION_TYPES];
-  return ACTIVATION_TYPES.filter((type) => selectedTypes.includes(type));
+  const normalized = new Set(
+    selectedTypes.map((type) => normalizeActivationType(type)),
+  );
+  return ACTIVATION_TYPES.filter((type) => normalized.has(type));
 }

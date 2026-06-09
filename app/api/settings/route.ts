@@ -23,6 +23,8 @@ function isValidSettings(body: unknown): body is ProgramSettings {
       "impact",
       "result",
       "budget",
+      "emailOptIns",
+      "emailOptInValue",
     ];
     for (const field of fields) {
       if (typeof config[field] !== "number" || Number.isNaN(config[field])) {

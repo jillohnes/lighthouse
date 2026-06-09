@@ -15,6 +15,7 @@ export type ProgramMetricRow = {
   roi: number;
   samples: number;
   content_reach: number;
+  opt_ins: number;
   py_spend_change: number | null;
   py_roi_change: number | null;
 };

@@ -15,6 +15,7 @@ create table if not exists program_metrics (
   roi numeric not null default 0,
   samples integer not null default 0,
   content_reach bigint not null default 0,
+  opt_ins integer not null default 0,
   py_spend_change numeric,
   py_roi_change numeric,
   created_at timestamptz not null default now()
@@ -71,10 +72,10 @@ create table if not exists kpi_targets (
 
 -- Default targets (edit in Settings UI or here)
 insert into kpi_targets (metric_key, target_value, label) values
-  ('htc_reach', 1200, 'Reach (People Engaged) (Per Activation)'),
-  ('htc_impact', 350, 'Impact (People Sampled) (Per Activation)'),
-  ('htc_result', 150000, 'Results (Sales During Activation) (Per Activation)'),
-  ('htc_budget', 2500, 'Avg Activation Cost'),
+  ('hct_reach', 1200, 'Reach (People Engaged) (Per Activation)'),
+  ('hct_impact', 350, 'Impact (People Sampled) (Per Activation)'),
+  ('hct_result', 150000, 'Results (Sales During Activation) (Per Activation)'),
+  ('hct_budget', 2500, 'Avg Activation Cost'),
   ('brand_experience_reach', 1800, 'Reach (People Engaged) (Per Activation)'),
   ('brand_experience_impact', 450, 'Impact (People Sampled) (Per Activation)'),
   ('brand_experience_result', 220000, 'Results (Sales During Activation) (Per Activation)'),
@@ -83,6 +84,8 @@ insert into kpi_targets (metric_key, target_value, label) values
   ('digital_sampling_impact', 500000, 'Impact (Redemptions) (Total Program)'),
   ('digital_sampling_result', 1500000, 'Results (Sales) (Total Program)'),
   ('digital_sampling_budget', 500000, 'Total Cost Budget'),
+  ('digital_sampling_email_opt_ins', 150000, 'Email Opt Ins (Total Program)'),
+  ('digital_sampling_email_opt_in_value', 10, 'Email Opt In Value (Per Opt In)'),
   ('content_organic_emv', 5000000, 'Organic Earned Media Value (EMV)')
 on conflict (metric_key) do nothing;
 

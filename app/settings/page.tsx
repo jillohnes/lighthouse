@@ -3,7 +3,7 @@ import { SettingsForm } from "@/components/settings/SettingsForm";
 
 export default function SettingsPage() {
   return (
-    <AppShell activeNav="Settings">
+    <AppShell activeNav="Setting">
       <header className="shrink-0 border-b border-brand/10 bg-surface px-6 py-4">
         <h2 className="text-xl font-bold text-foreground">Settings</h2>
       </header>

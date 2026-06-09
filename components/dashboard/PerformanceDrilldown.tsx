@@ -14,16 +14,19 @@ import {
 } from "recharts";
 import { GripVertical, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import {
+  ACTIVATION_TYPE_CHART_COLORS,
   CHART_AXIS_COLOR,
   CHART_GRID_COLOR,
   CHART_LINE_COLOR,
   CHART_STACK_COLORS,
+  LOCATION_TYPE_CHART_COLORS,
 } from "@/lib/brand-colors";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatReach } from "@/lib/format";
+import { ACTIVATION_TYPES } from "@/lib/settings";
 import { STATUS_STYLES } from "@/lib/target-status";
 import type { BreakdownRow, StackedMonthlyPerformance } from "@/lib/types";
 
-const METRICS = ["Reach", "Impact", "Result"] as const;
+const METRICS = ["Engagements", "Samples", "ROS"] as const;
 
 interface PerformanceDrilldownProps {
   title: string;
@@ -39,35 +42,147 @@ interface PerformanceDrilldownProps {
   showMetricToggle?: boolean;
   defaultMetric?: (typeof METRICS)[number];
   lineLabel?: string;
+  axisLabel?: string;
   valueFormatter?: (value: number) => string;
 }
 
-const METRIC_CONFIG = {
-  Reach: {
+const METRIC_TOGGLE_CONFIG = {
+  Engagements: {
+    key: "reach" as const,
+    axisLabel: "Ppl Engaged",
+    lineName: "Total Ppl Engaged",
+    format: (v: number) => v.toLocaleString(),
+  },
+  Samples: {
+    key: "impact" as const,
+    axisLabel: "Samples",
+    lineName: "Total Samples",
+    format: (v: number) => v.toLocaleString(),
+  },
+  ROS: {
+    key: "result" as const,
+    axisLabel: "ROS",
+    lineName: "Total ROS",
+    format: (v: number) => formatCurrency(v),
+  },
+} as const;
+
+/** Legacy dual-axis mapping for charts without metric toggles. */
+const LEGACY_METRIC_CONFIG = {
+  Engagements: {
     bar: "reach",
     line: "impact",
-    barName: "Reach",
     lineName: "Total Impact",
     barFmt: (v: number) => `${v.toLocaleString()}`,
     lineFmt: (v: number) => `${v.toLocaleString()}`,
   },
-  Impact: {
+  Samples: {
     bar: "impact",
     line: "result",
-    barName: "Impact",
     lineName: "Total Result",
     barFmt: (v: number) => `${v.toLocaleString()}`,
     lineFmt: (v: number) => `${(v / 1000).toFixed(0)}K`,
   },
-  Result: {
+  ROS: {
     bar: "result",
     line: "reach",
-    barName: "Result",
     lineName: "Total Reach",
     barFmt: (v: number) => `${(v / 1000).toFixed(0)}K`,
     lineFmt: (v: number) => `${v.toLocaleString()}`,
   },
 } as const;
+
+function getStackColor(
+  key: string,
+  index: number,
+  breakdownLabel: string,
+): string {
+  if (breakdownLabel === "By Activation Type") {
+    return (
+      ACTIVATION_TYPE_CHART_COLORS[key] ??
+      CHART_STACK_COLORS[index % CHART_STACK_COLORS.length]
+    );
+  }
+
+  if (breakdownLabel === "By Location Type") {
+    return (
+      LOCATION_TYPE_CHART_COLORS[key] ??
+      CHART_STACK_COLORS[index % CHART_STACK_COLORS.length]
+    );
+  }
+
+  return CHART_STACK_COLORS[index % CHART_STACK_COLORS.length];
+}
+
+type ChartTooltipEntry = {
+  name: string;
+  value: number;
+  dataKey: string;
+  color: string;
+};
+
+type ChartTooltipProps = {
+  active?: boolean;
+  payload?: ChartTooltipEntry[];
+  label?: string;
+  stackKeys: string[];
+  barFormat: (value: number) => string;
+  lineFormat: (value: number) => string;
+  metricLabel?: string;
+  totalLabel: string;
+};
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  stackKeys,
+  barFormat,
+  lineFormat,
+  metricLabel,
+  totalLabel,
+}: ChartTooltipProps) {
+  if (!active || !payload?.length || !label) return null;
+
+  const byKey = new Map(payload.map((entry) => [entry.dataKey, entry]));
+  const segments = stackKeys
+    .map((key) => byKey.get(key))
+    .filter((entry): entry is ChartTooltipEntry => entry != null);
+  const lineEntry = byKey.get("line");
+
+  return (
+    <div className="rounded-md border border-brand/12 bg-white px-2.5 py-2 text-xs shadow-md">
+      <p className="font-semibold text-foreground">{label}</p>
+      {metricLabel ? (
+        <p className="text-[10px] text-muted">{metricLabel}</p>
+      ) : null}
+      <div className="mt-1.5 space-y-1">
+        {segments.map((entry) => (
+          <div key={entry.dataKey} className="flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-2 text-brand/80">
+              <span className="truncate font-medium text-foreground">
+                {entry.name}
+              </span>
+              <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                {barFormat(Number(entry.value))}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+      {lineEntry ? (
+        <div className="mt-1.5 flex items-center justify-between gap-2 border-t border-brand/10 pt-1.5 font-semibold text-foreground">
+          <span>{totalLabel}</span>
+          <span className="tabular-nums">{lineFormat(Number(lineEntry.value))}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function PerformanceDrilldown({
   title,
@@ -79,29 +194,63 @@ export function PerformanceDrilldown({
   dropZoneProps,
   compact = false,
   showMetricToggle = true,
-  defaultMetric = "Reach",
+  defaultMetric = "Engagements",
   lineLabel,
+  axisLabel,
   valueFormatter,
 }: PerformanceDrilldownProps) {
   const [activeMetric, setActiveMetric] =
     useState<(typeof METRICS)[number]>(defaultMetric);
-  const config = METRIC_CONFIG[activeMetric];
-  const barFmt = valueFormatter ?? config.barFmt;
-  const lineFmt = valueFormatter ?? config.lineFmt;
+  const toggleConfig = METRIC_TOGGLE_CONFIG[activeMetric];
+  const legacyConfig = LEGACY_METRIC_CONFIG[activeMetric];
+  const barFmt = showMetricToggle
+    ? toggleConfig.format
+    : (valueFormatter ?? legacyConfig.barFmt);
+  const lineFmt = showMetricToggle
+    ? toggleConfig.format
+    : (valueFormatter ?? legacyConfig.lineFmt);
+  const yAxisLabel = showMetricToggle ? toggleConfig.axisLabel : axisLabel;
+  const axisTickFmt = showMetricToggle
+    ? activeMetric === "ROS"
+      ? formatCurrency
+      : formatReach
+    : valueFormatter
+      ? formatCurrency
+      : formatReach;
   const showTargets = breakdown.some((row) => row.reachPercent !== undefined);
   const stackKeys = breakdown.map((row) => row.name);
+  const tooltipKeys = useMemo(() => {
+    if (breakdownLabel === "By Activation Type") {
+      return ACTIVATION_TYPES.filter((type) => stackKeys.includes(type));
+    }
+    return [...stackKeys].sort((a, b) => a.localeCompare(b));
+  }, [breakdownLabel, stackKeys]);
+  const totalLabel =
+    lineLabel ??
+    (showMetricToggle ? toggleConfig.lineName : legacyConfig.lineName);
 
-  const chartData = useMemo(
-    () =>
-      monthly.map((row) => ({
+  const chartData = useMemo(() => {
+    if (showMetricToggle) {
+      return monthly.map((row) => ({
         month: row.month,
-        line: row.line[config.line],
+        line: row.line[toggleConfig.key],
         ...Object.fromEntries(
-          stackKeys.map((key) => [key, row.segments[key]?.[config.bar] ?? 0]),
+          stackKeys.map((key) => [
+            key,
+            row.segments[key]?.[toggleConfig.key] ?? 0,
+          ]),
         ),
-      })),
-    [monthly, stackKeys, config.bar, config.line],
-  );
+      }));
+    }
+
+    return monthly.map((row) => ({
+      month: row.month,
+      line: row.line.reach,
+      ...Object.fromEntries(
+        stackKeys.map((key) => [key, row.segments[key]?.reach ?? 0]),
+      ),
+    }));
+  }, [monthly, stackKeys, showMetricToggle, toggleConfig.key]);
 
   function formatCell(
     row: BreakdownRow,
@@ -134,7 +283,7 @@ export function PerformanceDrilldown({
 
   return (
     <div
-      className={`rounded-lg border border-brand/8 bg-white shadow-sm ${compact ? "p-4" : "p-5"}`}
+      className={`min-w-0 overflow-hidden rounded-lg border border-brand/8 bg-white shadow-sm ${compact ? "p-4" : "p-5"}`}
       {...dropZoneProps}
     >
       <div className="mb-2 flex items-center justify-between">
@@ -180,11 +329,34 @@ export function PerformanceDrilldown({
       </div>
 
       <div className="space-y-2">
-        <div className={`w-full ${compact ? "h-[300px]" : "h-[280px]"}`}>
+        <div
+          className={`mx-auto flex ${compact ? "h-[280px] w-[88%]" : "h-[280px] w-full"}`}
+        >
+          {yAxisLabel ? (
+            <div className="flex w-4 shrink-0 items-center justify-center self-stretch pb-8 pt-4">
+              <span
+                className="text-[9px] font-semibold"
+                style={{
+                  writingMode: "vertical-lr",
+                  transform: "rotate(180deg)",
+                  color: CHART_AXIS_COLOR,
+                }}
+              >
+                {yAxisLabel}
+              </span>
+            </div>
+          ) : null}
+          <div className="min-h-0 min-w-0 flex-1">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <ComposedChart
               data={chartData}
-              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+              barCategoryGap={compact ? "2%" : "10%"}
+              margin={{
+                top: 4,
+                right: 8,
+                left: 0,
+                bottom: 4,
+              }}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -193,68 +365,74 @@ export function PerformanceDrilldown({
               />
               <XAxis
                 dataKey="month"
-                tick={{ fontSize: 11, fill: CHART_AXIS_COLOR }}
+                tick={{ fontSize: compact ? 10 : 11, fill: CHART_AXIS_COLOR }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                yAxisId="bar"
-                tick={{ fontSize: 11, fill: CHART_AXIS_COLOR }}
+                yAxisId="left"
+                width={44}
+                tick={{ fontSize: 8, fill: CHART_AXIS_COLOR }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={barFmt}
-              />
-              <YAxis
-                yAxisId="line"
-                orientation="right"
-                tick={{ fontSize: 11, fill: CHART_AXIS_COLOR }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={lineFmt}
+                tickFormatter={axisTickFmt}
               />
               <Tooltip
-                contentStyle={{
-                  fontSize: 12,
-                  border: "1px solid rgba(123, 35, 64, 0.12)",
-                  borderRadius: 8,
-                }}
-                formatter={(value, name) => {
-                  if (name === "line") {
-                    return [lineFmt(Number(value)), lineLabel ?? config.lineName];
-                  }
-                  return [barFmt(Number(value)), String(name)];
-                }}
+                shared
+                cursor={{ fill: "rgba(123, 35, 64, 0.06)" }}
+                content={(props) => (
+                  <ChartTooltip
+                    active={props.active}
+                    payload={props.payload as unknown as ChartTooltipEntry[] | undefined}
+                    label={props.label != null ? String(props.label) : undefined}
+                    stackKeys={tooltipKeys}
+                    barFormat={barFmt}
+                    lineFormat={lineFmt}
+                    metricLabel={yAxisLabel}
+                    totalLabel={totalLabel}
+                  />
+                )}
               />
               <Legend
-                wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
+                wrapperStyle={{
+                  fontSize: compact ? 9 : 10,
+                  paddingTop: 2,
+                  lineHeight: "12px",
+                }}
                 iconType="circle"
-                iconSize={7}
+                iconSize={compact ? 6 : 7}
               />
               {stackKeys.map((key, index) => (
                 <Bar
                   key={key}
-                  yAxisId="bar"
+                  yAxisId="left"
                   dataKey={key}
                   name={key}
                   stackId="stack"
-                  fill={CHART_STACK_COLORS[index % CHART_STACK_COLORS.length]}
+                  fill={getStackColor(key, index, breakdownLabel)}
                   radius={
                     index === stackKeys.length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]
                   }
-                  barSize={compact ? 24 : 28}
+                  barSize={compact ? 38 : 28}
                 />
               ))}
               <Line
-                yAxisId="line"
+                yAxisId="left"
                 type="monotone"
                 dataKey="line"
-                name={lineLabel ?? config.lineName}
+                name={
+                  lineLabel ??
+                  (showMetricToggle
+                    ? toggleConfig.lineName
+                    : legacyConfig.lineName)
+                }
                 stroke={CHART_LINE_COLOR}
                 strokeWidth={2}
                 dot={{ r: 4, fill: CHART_LINE_COLOR, strokeWidth: 0 }}
               />
             </ComposedChart>
           </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="border-t border-brand/8 pt-2">

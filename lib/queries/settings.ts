@@ -7,6 +7,7 @@ import {
 import { getSupabaseAdmin, type KpiTargetRow } from "@/lib/supabase/server";
 
 const SETTINGS_KEY_PREFIXES = [
+  "hct_",
   "htc_",
   "brand_experience_",
   "digital_sampling_",

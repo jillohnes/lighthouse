@@ -38,6 +38,7 @@ type MetricRecord = {
   roi: number;
   samples: number;
   content_reach: number;
+  opt_ins: number;
   py_spend_change: number | null;
   py_roi_change: number | null;
 };
@@ -145,7 +146,7 @@ function mapActivationsRow(
   const impact = Number(row.Impact) || 0;
   const sales = Number(row.Result) || 0;
   const spend = getActivationSpend(activationType, budgets, digitalCount);
-  const roi = impact > 0 ? Math.min(100, Math.round(impact * 2.2)) : 0;
+  const roi = impact > 0 ? impact * 2.2 : 0;
   const isDigital = activationType.toLowerCase().includes("digital");
   const channel = isDigital ? "off_premise" : "on_premise";
 
@@ -163,6 +164,7 @@ function mapActivationsRow(
     roi,
     samples: isDigital ? reach : Math.round(reach * 0.4),
     content_reach: reach * 1000,
+    opt_ins: Number(row["Opt-Ins"] ?? row["Opt Ins"] ?? 0) || 0,
     py_spend_change: null,
     py_roi_change: null,
   };
@@ -192,6 +194,7 @@ function mapStandardRow(row: Record<string, unknown>): MetricRecord {
     roi: Number(mapped.roi) || 0,
     samples: Number(mapped.samples) || 0,
     content_reach: Number(mapped.content_reach) || 0,
+    opt_ins: Number(mapped.opt_ins ?? mapped["opt-ins"] ?? 0) || 0,
     py_spend_change: mapped.py_spend_change ? Number(mapped.py_spend_change) : null,
     py_roi_change: mapped.py_roi_change ? Number(mapped.py_roi_change) : null,
   };
@@ -200,19 +203,21 @@ function mapStandardRow(row: Record<string, unknown>): MetricRecord {
 const MIGRATION_SQL = `
 alter table program_metrics add column if not exists product_brand text;
 create index if not exists idx_program_metrics_product_brand on program_metrics (product_brand);
+alter table program_metrics add column if not exists opt_ins integer not null default 0;
 `.trim();
 
-async function hasProductBrandColumn(
+async function hasColumn(
   supabase: ReturnType<typeof createClient>,
+  column: string,
 ): Promise<boolean> {
   const { error } = await supabase
     .from("program_metrics")
-    .select("product_brand")
+    .select(column)
     .limit(1);
-  return !error?.message?.includes("product_brand");
+  return !error?.message?.includes(column);
 }
 
-async function applyProductBrandMigration(): Promise<boolean> {
+async function applySchemaMigration(): Promise<boolean> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) return false;
 
@@ -222,7 +227,7 @@ async function applyProductBrandMigration(): Promise<boolean> {
     await client.connect();
     await client.query(MIGRATION_SQL);
     await client.end();
-    console.log("Applied product_brand migration via DATABASE_URL.");
+    console.log("Applied program_metrics schema migration via DATABASE_URL.");
     return true;
   } catch (error) {
     if (
@@ -238,23 +243,32 @@ async function applyProductBrandMigration(): Promise<boolean> {
   }
 }
 
-async function ensureProductBrandColumn(
+async function ensureImportColumns(
   supabase: ReturnType<typeof createClient>,
-): Promise<boolean> {
-  if (await hasProductBrandColumn(supabase)) return true;
+): Promise<{ productBrand: boolean; optIns: boolean }> {
+  let productBrand = await hasColumn(supabase, "product_brand");
+  let optIns = await hasColumn(supabase, "opt_ins");
 
-  console.log("product_brand column missing — attempting migration...");
-  if (await applyProductBrandMigration()) {
-    return hasProductBrandColumn(supabase);
+  if (productBrand && optIns) {
+    return { productBrand, optIns };
   }
 
-  console.warn(
-    "Could not add product_brand column automatically.\n" +
-      "Run this in Supabase → SQL Editor, then re-import:\n\n" +
-      MIGRATION_SQL +
-      "\n",
-  );
-  return false;
+  console.log("Missing import columns — attempting migration...");
+  if (await applySchemaMigration()) {
+    productBrand = await hasColumn(supabase, "product_brand");
+    optIns = await hasColumn(supabase, "opt_ins");
+  }
+
+  if (!productBrand || !optIns) {
+    console.warn(
+      "Could not add all columns automatically.\n" +
+        "Run this in Supabase → SQL Editor, then re-import:\n\n" +
+        MIGRATION_SQL +
+        "\n",
+    );
+  }
+
+  return { productBrand, optIns };
 }
 
 async function main() {
@@ -309,21 +323,34 @@ async function main() {
       ).length
     : 0;
 
-  const supportsProductBrand = await ensureProductBrandColumn(supabase);
+  const { productBrand: supportsProductBrand, optIns: supportsOptIns } =
+    await ensureImportColumns(supabase);
 
   const records = (
     useActivations
       ? rawRows.map((row) => mapActivationsRow(row, budgets, digitalCount))
       : rawRows.map(mapStandardRow)
   ).map((record) => {
-    if (supportsProductBrand) return record;
-    const { product_brand: _productBrand, ...withoutBrand } = record;
-    return withoutBrand;
+    let row = record;
+    if (!supportsProductBrand) {
+      const { product_brand: _productBrand, ...withoutBrand } = row;
+      row = withoutBrand;
+    }
+    if (!supportsOptIns) {
+      const { opt_ins: _optIns, ...withoutOptIns } = row;
+      row = withoutOptIns;
+    }
+    return row;
   });
 
   if (!supportsProductBrand && headers.includes("Brand")) {
     console.warn(
       "Importing without product_brand — Brand column will not be stored until migration is applied.",
+    );
+  }
+  if (!supportsOptIns && headers.some((h) => h.toLowerCase().includes("opt"))) {
+    console.warn(
+      "Importing without opt_ins — Opt-Ins column will not be stored until migration is applied.",
     );
   }
 

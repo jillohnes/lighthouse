@@ -1,4 +1,5 @@
 import { BRAND_OPTIONS } from "@/lib/brands";
+import { normalizeActivationType } from "@/lib/settings";
 import { CONTENT_BRAND, loadContentMetrics } from "@/lib/content-metrics";
 import { fetchAllContentFilterRows } from "@/lib/queries/content";
 import { fetchAllProgramMetrics } from "@/lib/queries/fetch-all";
@@ -62,7 +63,7 @@ export async function getFilterOptionsFromSupabase(): Promise<FilterOptions | nu
   const activationTypes = [
     ...new Set(
       programRows
-        .map((r) => r.brand)
+        .map((r) => normalizeActivationType(r.brand))
         .filter((brand) => brand && brand !== CONTENT_BRAND),
     ),
   ].sort();

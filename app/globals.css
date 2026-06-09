@@ -40,6 +40,10 @@
   --color-brand-darker: var(--brand-900);
   --color-brand-50: var(--brand-50);
   --color-brand-100: var(--brand-100);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
   --color-accent: var(--accent);
   --color-accent-terracotta: var(--accent-terracotta);
   --color-accent-gold: var(--accent-gold);

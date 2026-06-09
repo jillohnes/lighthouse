@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { parseSpreadsheetDate } from "@/lib/parse-spreadsheet-date";
 import {
   matchesActivationRowFilters,
+  matchesActivationTypeFilter,
   matchesBrandFilter,
   matchesMarketFilter,
   matchesRegionFilter,
@@ -11,6 +12,7 @@ import {
 import { getProgramSettings } from "@/lib/queries/settings";
 import {
   BUDGET_MODES,
+  normalizeActivationType,
   type ActivationType,
   type ActivationTypeSettings,
 } from "@/lib/settings";
@@ -28,7 +30,7 @@ export function decodeActivation(row: ProgramMetricRow) {
   const sales = Number(row.return_value);
 
   return {
-    activation_type: row.brand,
+    activation_type: normalizeActivationType(row.brand),
     region: row.region,
     market: row.market,
     metric_date: row.metric_date,
@@ -39,6 +41,7 @@ export function decodeActivation(row: ProgramMetricRow) {
     sales,
     cost: Number(row.spend),
     channel: row.channel,
+    opt_ins: Number(row.opt_ins) || 0,
   };
 }
 
@@ -54,6 +57,7 @@ export type ActivationExcelRecord = {
   reach: number;
   impact: number;
   result: number;
+  opt_ins: number;
 };
 
 let cachedActivations: { mtimeMs: number; rows: ActivationExcelRecord[] } | null =
@@ -68,7 +72,9 @@ export function mapActivationExcelRow(
 ): ActivationExcelRecord {
   return {
     product_brand: String(row.Brand ?? "").trim(),
-    activation_type: String(row["Activation Type"] ?? "").trim(),
+    activation_type: normalizeActivationType(
+      String(row["Activation Type"] ?? ""),
+    ),
     region: String(row.Region ?? "").trim(),
     market: String(row.Market ?? "").trim(),
     metric_date: parseSpreadsheetDate(row.Date),
@@ -76,6 +82,7 @@ export function mapActivationExcelRow(
     reach: Number(row.Reach) || 0,
     impact: Number(row.Impact) || 0,
     result: Number(row.Result) || 0,
+    opt_ins: Number(row["Opt-Ins"] ?? row["Opt Ins"] ?? 0) || 0,
   };
 }
 
@@ -126,8 +133,7 @@ export function filterActivationMetricsByRegionMarketBrand(
       matchesRegionFilter(filters, row.region) &&
       matchesMarketFilter(filters, row.market) &&
       matchesBrandFilter(filters, row.product_brand) &&
-      (filters.activationType.length === 0 ||
-        filters.activationType.includes(row.activation_type)),
+      matchesActivationTypeFilter(filters, row.activation_type),
   );
 }
 
@@ -152,9 +158,11 @@ export function activationExcelToProgramRow(
   digitalCount: number,
   index: number,
 ): ProgramMetricRow {
-  const activationType = record.activation_type as ActivationType;
+  const activationType = normalizeActivationType(
+    record.activation_type,
+  ) as ActivationType;
   const spend = getActivationSpend(activationType, budgets, digitalCount);
-  const roi = record.impact > 0 ? Math.min(100, Math.round(record.impact * 2.2)) : 0;
+  const roi = record.impact > 0 ? record.impact * 2.2 : 0;
   const isDigital = activationType.toLowerCase().includes("digital");
   const channel = isDigital ? "off_premise" : "on_premise";
 
@@ -173,8 +181,28 @@ export function activationExcelToProgramRow(
     roi,
     samples: isDigital ? record.reach : Math.round(record.reach * 0.4),
     content_reach: record.reach * 1000,
+    opt_ins: record.opt_ins,
     py_spend_change: null,
     py_roi_change: null,
+  };
+}
+
+export function summarizeActivationTypeFromExcel(
+  records: ActivationExcelRecord[],
+  type: ActivationType,
+) {
+  const typeRecords = records.filter(
+    (record) => normalizeActivationType(record.activation_type) === type,
+  );
+  const sales = typeRecords.reduce((sum, record) => sum + record.result, 0);
+  const impact = typeRecords.reduce((sum, record) => sum + record.impact, 0);
+  const reach = typeRecords.reduce((sum, record) => sum + record.reach, 0);
+
+  return {
+    count: typeRecords.length,
+    sales,
+    impact,
+    reach,
   };
 }
 

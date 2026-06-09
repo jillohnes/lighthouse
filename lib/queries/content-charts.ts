@@ -49,7 +49,7 @@ function buildImpressionsChart(
     const total = data.organic + data.paid;
     return {
       month,
-      line: { reach: 0, impact: total, result: 0 },
+      line: { reach: total, impact: total, result: 0 },
       segments: {
         "Organic Impressions": { reach: data.organic, impact: 0, result: 0 },
         "Paid Impressions": { reach: data.paid, impact: 0, result: 0 },

@@ -5,6 +5,7 @@ import {
   ACTIVATION_TYPES,
   BUDGET_MODES,
   METRIC_DISPLAY,
+  normalizeActivationType,
   TARGET_MODES,
   type ActivationType,
   type MetricKey,
@@ -22,7 +23,9 @@ import type { BreakdownRow } from "@/lib/types";
  */
 
 export function getTypeRows(rows: DecodedActivation[], type: ActivationType) {
-  return rows.filter((row) => row.activation_type === type);
+  return rows.filter(
+    (row) => normalizeActivationType(row.activation_type) === type,
+  );
 }
 
 export function getMetricTotal(
@@ -155,7 +158,9 @@ export function computeProgramSummary(
     (type) => TARGET_MODES[type] === "per_activation",
   );
   const perActivationRows = rows.filter((row) =>
-    perActivationTypes.includes(row.activation_type as ActivationType),
+    perActivationTypes.includes(
+      normalizeActivationType(row.activation_type) as ActivationType,
+    ),
   );
 
   let impactActual = 0;
@@ -230,6 +235,42 @@ export function computeKpiMetrics(
     sales: { actual: totalSales, target: salesTarget },
     roi: { actual: roi, target: roiTarget },
   };
+}
+
+/** Opt-in count from import.xlsx Opt-Ins column; value = count × value per opt-in. */
+export function computeOptInMetrics(
+  rows: DecodedActivation[],
+  valuePerOptIn = 0,
+) {
+  const count = rows.reduce((sum, row) => sum + row.opt_ins, 0);
+  return {
+    count,
+    value: count * valuePerOptIn,
+  };
+}
+
+export type ActivationTypeSummary = {
+  spend: number;
+  sales: number;
+  reach: number;
+  impact: number;
+  roi: number;
+  rateOfSale: number;
+};
+
+export function computeActivationTypeSummary(
+  rows: DecodedActivation[],
+  type: ActivationType,
+): ActivationTypeSummary {
+  const typeRows = getTypeRows(rows, type);
+  const spend = typeRows.reduce((sum, row) => sum + row.cost, 0);
+  const sales = typeRows.reduce((sum, row) => sum + row.result, 0);
+  const reach = typeRows.reduce((sum, row) => sum + row.reach, 0);
+  const impact = typeRows.reduce((sum, row) => sum + row.impact, 0);
+  const roi = spend > 0 ? (sales / spend) * 100 : 0;
+  const rateOfSale = impact > 0 ? sales / impact : 0;
+
+  return { spend, sales, reach, impact, roi, rateOfSale };
 }
 
 function computeLocationMetricTarget(
@@ -325,21 +366,56 @@ export function buildLocationBreakdown(
     .sort((a, b) => b.result - a.result);
 }
 
+function computeTypeMetricTarget(
+  typeRows: DecodedActivation[],
+  type: ActivationType,
+  settings: ProgramSettings,
+  metric: MetricKey,
+): number {
+  const config = settings.activationTypes[type];
+  if (TARGET_MODES[type] === "per_activation") {
+    return config[metric] * typeRows.length;
+  }
+  return config[metric];
+}
+
 export function buildActivationBreakdown(
   rows: DecodedActivation[],
   settings: ProgramSettings,
 ): BreakdownRow[] {
   const types = [
-    ...new Set(rows.map((row) => row.activation_type)),
+    ...new Set(rows.map((row) => normalizeActivationType(row.activation_type))),
   ] as ActivationType[];
 
   return types
     .map((type) => {
       const typeRows = getTypeRows(rows, type);
-      const config = settings.activationTypes[type];
-      const reach = compareTypeMetric(typeRows, type, "reach", config.reach);
-      const impact = compareTypeMetric(typeRows, type, "impact", config.impact);
-      const result = compareTypeMetric(typeRows, type, "result", config.result);
+      const reachActual = typeRows.reduce((sum, row) => sum + row.reach, 0);
+      const impactActual = typeRows.reduce((sum, row) => sum + row.impact, 0);
+      const resultActual = typeRows.reduce((sum, row) => sum + row.result, 0);
+
+      const reachTarget = computeTypeMetricTarget(
+        typeRows,
+        type,
+        settings,
+        "reach",
+      );
+      const impactTarget = computeTypeMetricTarget(
+        typeRows,
+        type,
+        settings,
+        "impact",
+      );
+      const resultTarget = computeTypeMetricTarget(
+        typeRows,
+        type,
+        settings,
+        "result",
+      );
+
+      const reach = compareLocationMetric(reachActual, reachTarget);
+      const impact = compareLocationMetric(impactActual, impactTarget);
+      const result = compareLocationMetric(resultActual, resultTarget);
 
       return {
         name: type,
@@ -347,9 +423,9 @@ export function buildActivationBreakdown(
         impact: Math.round(impact.actual),
         result: Math.round(result.actual),
         change: result.percentOfTarget - 100,
-        reachTarget: config.reach,
-        impactTarget: config.impact,
-        resultTarget: config.result,
+        reachTarget: Math.round(reach.target),
+        impactTarget: Math.round(impact.target),
+        resultTarget: Math.round(result.target),
         reachStatus: reach.status,
         impactStatus: impact.status,
         resultStatus: result.status,

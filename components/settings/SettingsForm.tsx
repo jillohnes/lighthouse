@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Save } from "lucide-react";
 import {
   ACTIVATION_TYPES,
+  ACTIVATION_SECTION_TITLES,
   BUDGET_LABELS,
   DEFAULT_CONTENT_SETTINGS,
   DEFAULT_PROGRAM_SETTINGS,
@@ -84,7 +85,9 @@ function ActivationSettingsCard({
 
   return (
     <div className="rounded-lg border border-brand/8 bg-white p-5 shadow-sm">
-      <h3 className="mb-1 text-sm font-bold text-foreground">{type}</h3>
+      <h3 className="mb-1 text-sm font-bold text-foreground">
+        {ACTIVATION_SECTION_TITLES[type]}
+      </h3>
       <p className="mb-4 text-xs text-muted">
         {type === "Digital Sampling" ? "Off Premise" : "On Premise"} · {scopeLabel} targets
       </p>
@@ -112,6 +115,23 @@ function ActivationSettingsCard({
           prefix="$"
           onChange={(v) => updateField("budget", v)}
         />
+        {type === "Digital Sampling" && (
+          <>
+            <SettingsField
+              label="Email Opt Ins"
+              hint="Total program email opt-in count goal"
+              value={settings.emailOptIns}
+              onChange={(v) => updateField("emailOptIns", v)}
+            />
+            <SettingsField
+              label="Email Opt In Value"
+              hint="Dollar value per email opt-in (dashboard total = opt-ins × this value)"
+              value={settings.emailOptInValue}
+              prefix="$"
+              onChange={(v) => updateField("emailOptInValue", v)}
+            />
+          </>
+        )}
       </div>
     </div>
   );
@@ -202,9 +222,9 @@ export function SettingsForm() {
         <div>
           <h2 className="text-xl font-bold text-foreground">Program Targets & Budget</h2>
           <p className="mt-1 text-sm text-brand/60">
-            HTC and Brand Experience targets are per activation. Digital Sampling targets
+            HCT and Brand Experience targets are per activation. Digital Sampling targets
             are total program. Budget uses total cost for Digital Sampling and average
-            activation cost for HTC and Brand Experience.
+            activation cost for HCT and Brand Experience.
           </p>
         </div>
         <button

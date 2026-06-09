@@ -8,12 +8,7 @@ import { formatDateParam, normalizeLocalDate, parseDateParam } from "@/lib/dates
 import {
   DEFAULT_DRILLDOWN_ORDER,
   loadDrilldownOrder,
-  loadKpiOrder,
-  loadSecondaryKpiOrder,
-  mergeKpiOrder,
   saveDrilldownOrder,
-  saveKpiOrder,
-  saveSecondaryKpiOrder,
   type DrilldownSectionId,
 } from "@/lib/dashboard-layout";
 import type { DashboardData, DashboardFilters, FilterOptions } from "@/lib/types";
@@ -22,10 +17,9 @@ import { AiInsights } from "./AiInsights";
 import { DrilldownList, type DrilldownSectionData } from "./DrilldownList";
 import { PerformanceDrilldown } from "./PerformanceDrilldown";
 import { FilterBar } from "./FilterBar";
-import { KpiCards } from "./KpiCards";
+import { KpiTileGrid } from "./KpiTileGrid";
 import { TargetsPacing } from "./TargetsPacing";
 import { TopAmbassadors } from "./TopAmbassadors";
-import { TopMarkets } from "./TopMarkets";
 
 function buildQueryString(filters: DashboardFilters): string {
   const params = new URLSearchParams({
@@ -52,8 +46,6 @@ export function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [kpiOrder, setKpiOrder] = useState<string[]>([]);
-  const [secondaryKpiOrder, setSecondaryKpiOrder] = useState<string[]>([]);
   const [drilldownOrder, setDrilldownOrder] = useState<DrilldownSectionId[]>(
     DEFAULT_DRILLDOWN_ORDER,
   );
@@ -100,32 +92,6 @@ export function Dashboard() {
   useEffect(() => {
     setDrilldownOrder(loadDrilldownOrder());
   }, []);
-
-  useEffect(() => {
-    if (!data?.kpis.length) return;
-    const labels = data.kpis.map((kpi) => kpi.label);
-    setKpiOrder((prev) => {
-      const stored = prev.length ? prev : loadKpiOrder();
-      return mergeKpiOrder(stored, labels);
-    });
-  }, [data?.kpis]);
-
-  useEffect(() => {
-    if (kpiOrder.length) saveKpiOrder(kpiOrder);
-  }, [kpiOrder]);
-
-  useEffect(() => {
-    if (!data?.secondaryKpis.length) return;
-    const labels = data.secondaryKpis.map((kpi) => kpi.label);
-    setSecondaryKpiOrder((prev) => {
-      const stored = prev.length ? prev : loadSecondaryKpiOrder();
-      return mergeKpiOrder(stored, labels);
-    });
-  }, [data?.secondaryKpis]);
-
-  useEffect(() => {
-    if (secondaryKpiOrder.length) saveSecondaryKpiOrder(secondaryKpiOrder);
-  }, [secondaryKpiOrder]);
 
   useEffect(() => {
     saveDrilldownOrder(drilldownOrder);
@@ -216,21 +182,15 @@ export function Dashboard() {
             </div>
           ) : data ? (
             <>
-              <div className="mb-5 space-y-3">
-                <KpiCards
-                  kpis={data.kpis}
-                  order={kpiOrder}
-                  onReorder={setKpiOrder}
-                  columns={6}
+              <div className="mb-5">
+                <KpiTileGrid
+                  layout={data.kpiTileLayout}
+                  markets={data.mapMarkets}
+                  selectedMarket={filters.market[0] ?? null}
+                  onSelectMarket={(market) =>
+                    applyFilterUpdates({ market: market ? [market] : [] })
+                  }
                 />
-                {data.secondaryKpis.length > 0 && (
-                  <KpiCards
-                    kpis={data.secondaryKpis}
-                    order={secondaryKpiOrder}
-                    onReorder={setSecondaryKpiOrder}
-                    columns={9}
-                  />
-                )}
               </div>
 
               <div className="flex items-start gap-5">
@@ -251,6 +211,7 @@ export function Dashboard() {
                       takeaway={data.impressionsByMonth.takeaway}
                       compact
                       showMetricToggle={false}
+                      axisLabel="Impressions"
                       lineLabel="Total Impressions"
                     />
                     <PerformanceDrilldown
@@ -261,11 +222,11 @@ export function Dashboard() {
                       takeaway={data.contentByMonth.takeaway}
                       compact
                       showMetricToggle={false}
+                      axisLabel="Value"
                       lineLabel="Total Value"
                       valueFormatter={formatCurrency}
                     />
                   </div>
-                  <TopMarkets markets={data.topMarkets} />
                   <TopAmbassadors ambassadors={data.topAmbassadors} />
                   <TargetsPacing
                     targets={data.targets}

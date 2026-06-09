@@ -35,6 +35,7 @@ export interface KpiMetric {
   icons?: KpiPlatformIcon[];
   comparisonLabel?: string;
   valueTone?: "positive" | "negative";
+  spendLines?: { label: string; value: string }[];
 }
 
 export interface MonthlyPerformance {
@@ -106,6 +107,11 @@ export interface TopMarketRow {
   roiPlan: number;
   roiVsPlan: number;
   status: MarketStatus;
+  activationRoas: {
+    HCT: number | null;
+    "Brand Experience": number | null;
+    "Digital Sampling": number | null;
+  };
 }
 
 export interface TopAmbassadorRow {
@@ -115,14 +121,100 @@ export interface TopAmbassadorRow {
   paidImpressions: number;
 }
 
+export interface KpiTileLayout {
+  summary: {
+    ttlRoi: KpiMetric;
+    samplingRoi: KpiMetric;
+    contentRoi: KpiMetric;
+  };
+  hct: {
+    roi: KpiMetric;
+    totalEngagements: KpiMetric;
+    totalSamples: KpiMetric;
+    rateOfSale: KpiMetric;
+    organicImpressions: KpiMetric;
+    paidImpressions: KpiMetric;
+    engRate: KpiMetric;
+    avgCpc: KpiMetric;
+    emv: KpiMetric;
+    mediaEfficiency: KpiMetric;
+  };
+  brandExperience: {
+    roi: KpiMetric;
+    totalEngagements: KpiMetric;
+    totalSamples: KpiMetric;
+    rateOfSale: KpiMetric;
+  };
+  digitalSampling: {
+    roi: KpiMetric;
+    totalScans: KpiMetric;
+    totalRedemptions: KpiMetric;
+    rateOfSale: KpiMetric;
+    optIns: KpiMetric;
+    optInValue: KpiMetric;
+  };
+}
+
+export interface BrandSampleRow {
+  brand: string;
+  samples: number;
+  reach: number;
+  result: number;
+  conversionRate: number;
+}
+
+export interface MarketConversionRow {
+  market: string;
+  samples: number;
+  result: number;
+  conversionRate: number;
+  topBrands: BrandSampleRow[];
+}
+
+export interface DrinkTrend {
+  name: string;
+  category: string;
+  popularity: number;
+}
+
+export interface MarketTrendAnalysis {
+  market: string;
+  trendingDrinks: DrinkTrend[];
+  topPerformingBrands: BrandSampleRow[];
+  samples: number;
+  result: number;
+  conversionRate: number;
+  correlationScore: number;
+  performanceScore: number;
+  insight: string;
+  aiRecommendation: string;
+}
+
+export interface SamplingTypeDetail {
+  type: string;
+  title: string;
+  brandsSampled: BrandSampleRow[];
+  marketConversion: MarketConversionRow[];
+}
+
+export interface OnPremiseData {
+  byActivationType: PerformanceDrilldownData;
+  byLocationType: PerformanceDrilldownData;
+  samplingTypes: SamplingTypeDetail[];
+  trendAnalysis: MarketTrendAnalysis[];
+}
+
 export interface DashboardData {
+  kpiTileLayout: KpiTileLayout;
+  /** @deprecated Use kpiTileLayout */
   kpis: KpiMetric[];
+  /** @deprecated Use kpiTileLayout */
   secondaryKpis: KpiMetric[];
   byActivationType: PerformanceDrilldownData;
   byLocationType: PerformanceDrilldownData;
   impressionsByMonth: PerformanceDrilldownData;
   contentByMonth: PerformanceDrilldownData;
-  topMarkets: TopMarketRow[];
+  mapMarkets: TopMarketRow[];
   topAmbassadors: TopAmbassadorRow[];
   targets: TargetGauge[];
   pacingPercent: number;

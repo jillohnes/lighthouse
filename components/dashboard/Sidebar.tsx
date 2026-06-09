@@ -2,33 +2,27 @@
 
 import Link from "next/link";
 import {
-  BarChart3,
   Bell,
   Building2,
-  ChevronDown,
-  Database,
   FileText,
   LayoutDashboard,
-  RefreshCw,
+  Newspaper,
   Settings,
   Sparkles,
   Store,
   Target,
-  TrendingUp,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { label: "On Premise", icon: Building2, href: "#" },
+  { label: "On Premise", icon: Building2, href: "/on-premise" },
+  { label: "Content", icon: Newspaper, href: "#" },
   { label: "Off Premise", icon: Store, href: "#" },
   { label: "Targets & Pacing", icon: Target, href: "#" },
-  { label: "Performance Drilldown", icon: TrendingUp, href: "#" },
-  { label: "Historical Results", icon: BarChart3, href: "#" },
-  { label: "AI Insights", icon: Sparkles, href: "#", badge: "New" },
   { label: "Reports", icon: FileText, href: "#" },
-  { label: "Data Explorer", icon: Database, href: "#" },
+  { label: "AI Insights", icon: Sparkles, href: "#" },
   { label: "Alerts", icon: Bell, href: "#" },
-  { label: "Settings", icon: Settings, href: "/settings" },
+  { label: "Setting", icon: Settings, href: "/settings" },
 ];
 
 interface SidebarProps {
@@ -58,21 +52,11 @@ export function Sidebar({ activeNav }: SidebarProps) {
                   <button type="button" className={className}>
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
-                    {item.badge && (
-                      <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase">
-                        {item.badge}
-                      </span>
-                    )}
                   </button>
                 ) : (
                   <Link href={item.href} className={className}>
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
-                    {item.badge && (
-                      <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase">
-                        {item.badge}
-                      </span>
-                    )}
                   </Link>
                 )}
               </li>
@@ -80,34 +64,6 @@ export function Sidebar({ activeNav }: SidebarProps) {
           })}
         </ul>
       </nav>
-
-      <div className="border-t border-white/10 px-4 py-4">
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-white/50">
-          Permissions
-        </p>
-        <div className="space-y-2">
-          {[
-            { label: "View As Role", value: "Market Manager" },
-            { label: "Market", value: "All" },
-            { label: "Channel", value: "All" },
-          ].map((field) => (
-            <div key={field.label}>
-              <label className="mb-1 block text-[10px] text-white/50">{field.label}</label>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between rounded border border-white/20 bg-white/5 px-2 py-1.5 text-xs text-white/80"
-              >
-                {field.value}
-                <ChevronDown className="h-3 w-3 text-white/50" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center justify-between text-[10px] text-white/40">
-          <span>Data refreshed Jun 1, 2024 8:30 AM</span>
-          <RefreshCw className="h-3 w-3" />
-        </div>
-      </div>
     </aside>
   );
 }
