@@ -18,6 +18,7 @@ export type ContentMetricRecord = {
   product_brand: string;
   hct_rep: string;
   handle: string;
+  content_type: string;
   instagram_followers: number;
   tiktok_followers: number;
   avg_eng_rate: number;
@@ -99,6 +100,7 @@ export function mapCreatorsRow(row: Record<string, unknown>): ContentMetricRecor
     product_brand: String(row.Brand ?? "").trim(),
     hct_rep: String(row["HCT Rep"] ?? "").trim(),
     handle: String(row.Handle ?? "").trim(),
+    content_type: String(row["Content Type"] ?? "Post").trim(),
     instagram_followers: num(row["Instagram (Total Followers)"]),
     tiktok_followers: num(row["TikTok (Total Followers)"]),
     avg_eng_rate: num(row["Avg Eng Rate"]),

@@ -16,7 +16,7 @@ import {
 const NAV_ITEMS = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "On Premise", icon: Building2, href: "/on-premise" },
-  { label: "Content", icon: Newspaper, href: "#" },
+  { label: "Content", icon: Newspaper, href: "/content" },
   { label: "Off Premise", icon: Store, href: "#" },
   { label: "Targets & Pacing", icon: Target, href: "#" },
   { label: "Reports", icon: FileText, href: "#" },

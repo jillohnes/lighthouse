@@ -197,6 +197,70 @@ export interface SamplingTypeDetail {
   marketConversion: MarketConversionRow[];
 }
 
+export interface ContentMarketImpressions {
+  market: string;
+  organic: number;
+  paid: number;
+  total: number;
+}
+
+export interface ContentMarketEngRate {
+  market: string;
+  avgEngRate: number;
+}
+
+export interface ContentSentimentMarket {
+  market: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  dominant: "positive" | "neutral" | "negative";
+}
+
+export interface ContentBrandSentiment {
+  brand: string;
+  markets: ContentSentimentMarket[];
+  totals: { positive: number; neutral: number; negative: number };
+}
+
+export interface ContentTopPost {
+  id: string;
+  title: string;
+  creator: string;
+  handle: string;
+  market: string;
+  brand: string;
+  contentType: string;
+  organicImpressions: number;
+  paidImpressions: number;
+  engRate: number;
+  ctr: number;
+  imageGradient: string;
+  imageUrl: string;
+  platform: "instagram" | "tiktok";
+}
+
+export interface ContentTopCreator {
+  creator: string;
+  handle: string;
+  market: string;
+  brand: string;
+  totalImpressions: number;
+  totalReach: number;
+  avgEngRate: number;
+  trendScore: number;
+  monthsActive: number;
+  trendDirection: "up" | "stable" | "down";
+}
+
+export interface ContentDashboardData {
+  impressionsByMarket: ContentMarketImpressions[];
+  engRateByMarket: ContentMarketEngRate[];
+  sentimentByBrand: ContentBrandSentiment[];
+  topPosts: ContentTopPost[];
+  topCreators: ContentTopCreator[];
+}
+
 export interface OnPremiseData {
   byActivationType: PerformanceDrilldownData;
   byLocationType: PerformanceDrilldownData;

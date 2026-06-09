@@ -254,6 +254,7 @@ export async function getTopAmbassadors(
         product_brand: "",
         hct_rep: row.hct_rep,
         handle: "",
+        content_type: "Post",
         instagram_followers: 0,
         tiktok_followers: 0,
         avg_eng_rate: 0,

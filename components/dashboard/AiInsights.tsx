@@ -13,6 +13,7 @@ import type { AiInsight } from "@/lib/types";
 
 interface AiInsightsProps {
   insights: AiInsight[];
+  embedded?: boolean;
 }
 
 const ICON_MAP = {
@@ -24,8 +25,52 @@ const ICON_MAP = {
 const PANEL_WIDTH = 320;
 const COLLAPSED_WIDTH = 48;
 
-export function AiInsights({ insights }: AiInsightsProps) {
+function InsightList({ insights }: { insights: AiInsight[] }) {
+  return (
+    <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      {insights.map((insight) => {
+        const config = ICON_MAP[insight.icon];
+        const Icon = config.icon;
+        return (
+          <div
+            key={insight.id}
+            className="rounded-lg border border-brand/8 p-4 transition-shadow hover:shadow-md"
+          >
+            <div className="flex gap-3">
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${config.bg}`}
+              >
+                <Icon className={`h-4 w-4 ${config.color}`} />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-foreground">
+                  {insight.title}
+                </h4>
+                <p className="mt-1 text-xs leading-relaxed text-brand/70">
+                  {insight.description}
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-accent"
+                >
+                  View Details
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function AiInsights({ insights, embedded = false }: AiInsightsProps) {
   const [collapsed, setCollapsed] = useState(false);
+
+  if (embedded) {
+    return <InsightList insights={insights} />;
+  }
 
   return (
     <div
@@ -72,41 +117,7 @@ export function AiInsights({ insights }: AiInsightsProps) {
             </h3>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto p-4">
-            {insights.map((insight) => {
-              const config = ICON_MAP[insight.icon];
-              const Icon = config.icon;
-              return (
-                <div
-                  key={insight.id}
-                  className="rounded-lg border border-brand/8 p-4 transition-shadow hover:shadow-md"
-                >
-                  <div className="flex gap-3">
-                    <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${config.bg}`}
-                    >
-                      <Icon className={`h-4 w-4 ${config.color}`} />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        {insight.title}
-                      </h4>
-                      <p className="mt-1 text-xs leading-relaxed text-brand/70">
-                        {insight.description}
-                      </p>
-                      <button
-                        type="button"
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand hover:text-accent"
-                      >
-                        View Details
-                        <ArrowRight className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <InsightList insights={insights} />
 
           <div className="border-t border-brand/8 p-4">
             <button

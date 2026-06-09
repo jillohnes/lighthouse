@@ -58,6 +58,7 @@ function mapProgramRowToContentRecord(row: ContentProgramSelect): ContentMetricR
     product_brand: String(row.product_brand ?? "").trim(),
     hct_rep: String(row.retailer_type ?? "").trim(),
     handle: String(row.venue_type ?? "").trim(),
+    content_type: "Post",
     instagram_followers: 0,
     tiktok_followers: 0,
     avg_eng_rate: 0,

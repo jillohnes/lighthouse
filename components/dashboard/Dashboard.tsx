@@ -13,7 +13,7 @@ import {
 } from "@/lib/dashboard-layout";
 import type { DashboardData, DashboardFilters, FilterOptions } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
-import { AiInsights } from "./AiInsights";
+import { DashboardAiPanel } from "./DashboardAiPanel";
 import { DrilldownList, type DrilldownSectionData } from "./DrilldownList";
 import { PerformanceDrilldown } from "./PerformanceDrilldown";
 import { FilterBar } from "./FilterBar";
@@ -235,7 +235,11 @@ export function Dashboard() {
                 </div>
 
                 <div className="sticky top-0">
-                  <AiInsights insights={data.insights} />
+                  <DashboardAiPanel
+                    insights={data.insights}
+                    filters={filters}
+                    chatDisabled={loading}
+                  />
                 </div>
               </div>
             </>

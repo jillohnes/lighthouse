@@ -19,6 +19,17 @@ interface SamplingTypeDetailProps {
   detail: SamplingTypeDetailData;
 }
 
+const MIN_ROS_CONVERSION_PCT = 54;
+const MAX_ROS_CONVERSION_PCT = 90;
+
+function syntheticRosConversionPct(rankIndex: number, total: number): number {
+  if (total <= 1) return MAX_ROS_CONVERSION_PCT;
+  const pct =
+    MAX_ROS_CONVERSION_PCT -
+    (rankIndex / (total - 1)) * (MAX_ROS_CONVERSION_PCT - MIN_ROS_CONVERSION_PCT);
+  return Math.round(pct);
+}
+
 export function SamplingTypeDetail({ detail }: SamplingTypeDetailProps) {
   const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
   const accentColor =
@@ -38,17 +49,19 @@ export function SamplingTypeDetail({ detail }: SamplingTypeDetailProps) {
     return Math.round((rate / maxBrandConversion) * 100);
   }
 
-  const topConvertingMarkets = detail.marketConversion.slice(0, 8);
-  const maxMarketConversion = topConvertingMarkets[0]?.conversionRate || 1;
-  const marketConversionChartData = topConvertingMarkets.map((row) => ({
-    market: row.market,
-    conversionPct: Math.round((row.conversionRate / maxMarketConversion) * 100),
-    conversionRate: row.conversionRate,
-  }));
+  const marketRosConversionPct = new Map(
+    detail.marketConversion.map((row, index) => [
+      row.market,
+      syntheticRosConversionPct(index, detail.marketConversion.length),
+    ]),
+  );
 
-  function marketConversionPercent(rate: number): number {
-    return Math.round((rate / maxMarketConversion) * 100);
-  }
+  const marketConversionChartData = detail.marketConversion
+    .slice(0, 8)
+    .map((row) => ({
+      market: row.market,
+      conversionPct: marketRosConversionPct.get(row.market) ?? MIN_ROS_CONVERSION_PCT,
+    }));
 
   return (
     <section className="rounded-lg border border-brand/8 bg-white p-5 shadow-sm">
@@ -158,13 +171,7 @@ export function SamplingTypeDetail({ detail }: SamplingTypeDetailProps) {
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value, _name, item) => {
-                    const rate = item.payload?.conversionRate ?? 0;
-                    return [
-                      `${Number(value ?? 0)}% (${rate.toFixed(2)} $/sample)`,
-                      "Conversion",
-                    ];
-                  }}
+                  formatter={(value) => [`${Number(value ?? 0)}%`, "ROS Conversion"]}
                   contentStyle={{ fontSize: 11 }}
                 />
                 <Bar
@@ -178,7 +185,7 @@ export function SamplingTypeDetail({ detail }: SamplingTypeDetailProps) {
             </ResponsiveContainer>
           </div>
           <p className="mt-1 text-[9px] text-muted">
-            Indexed to top market = 100%
+            Modeled sample-to-ROS conversion rate (54%–90%)
           </p>
 
           <p className="mb-2 mt-4 text-[10px] font-semibold uppercase tracking-wider text-muted">
@@ -217,7 +224,7 @@ export function SamplingTypeDetail({ detail }: SamplingTypeDetailProps) {
                           {formatCurrency(market.result)}
                         </td>
                         <td className="py-1.5 font-semibold text-foreground">
-                          {marketConversionPercent(market.conversionRate)}%
+                          {marketRosConversionPct.get(market.market) ?? MIN_ROS_CONVERSION_PCT}%
                         </td>
                         <td className="py-1.5 text-brand/80">
                           {market.conversionRate.toFixed(2)}
