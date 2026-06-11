@@ -71,16 +71,7 @@ let cachedContent: { mtimeMs: number; rows: ContentMetricRecord[] } | null =
   null;
 
 export function resolveContentPath(): string {
-  const candidates = [
-    path.join(process.cwd(), "data", "content.xlsx"),
-    path.join(process.cwd(), "..", "data", "content.xlsx"),
-  ];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
-  return candidates[0];
+  return path.join(process.cwd(), "data", "content.xlsx");
 }
 
 function num(value: unknown): number {
