@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   Bell,
@@ -34,8 +35,15 @@ interface SidebarProps {
 export function Sidebar({ activeNav }: SidebarProps) {
   return (
     <aside className="flex w-[220px] shrink-0 flex-col bg-brand-darker text-white shadow-lg">
-      <div className="border-b border-white/10 px-5 py-5">
-        <h1 className="text-sm font-bold tracking-[0.15em]">PROOF & POUR</h1>
+      <div className="flex items-center justify-center border-b border-white/10 px-5 py-4">
+        <Image
+          src="/proof-and-pour-logo.png"
+          alt="Proof & Pour"
+          width={76}
+          height={112}
+          className="h-16 w-auto"
+          priority
+        />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
