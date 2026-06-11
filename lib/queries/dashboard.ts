@@ -507,17 +507,16 @@ function buildSecondaryKpis(
 async function fetchProgramMetricsSafe(
   filters: DashboardFilters,
 ): Promise<Awaited<ReturnType<typeof fetchAllProgramMetrics>>> {
-  const excelRows = await loadFilteredActivationsAsProgramRows(filters);
-  if (excelRows.length > 0) return excelRows;
-
-  if (!isSupabaseConfigured()) return [];
-
-  try {
-    return await fetchAllProgramMetrics(() => buildQuery(filters));
-  } catch (error) {
-    console.error("Failed to load program metrics:", error);
-    return [];
+  if (isSupabaseConfigured()) {
+    try {
+      const rows = await fetchAllProgramMetrics(() => buildQuery(filters));
+      if (rows.length > 0) return rows;
+    } catch (error) {
+      console.error("Failed to load program metrics:", error);
+    }
   }
+
+  return loadFilteredActivationsAsProgramRows(filters);
 }
 
 export async function getDashboardData(

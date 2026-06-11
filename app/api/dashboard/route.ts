@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ALL_BRANDS_LABEL, BRAND_OPTIONS, type BrandFilter } from "@/lib/brands";
+import { SUPABASE_ENV_WARNING } from "@/lib/data-source";
 import { getDefaultFilters } from "@/lib/data";
 import { parseDateParam } from "@/lib/dates";
 import { getDashboardData } from "@/lib/queries/dashboard";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 import type { DashboardFilters } from "@/lib/types";
 
 function parseList(param: string | null): string[] {
@@ -42,7 +44,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ source: "dashboard", data });
     }
 
-    return NextResponse.json({ source: "empty", data: null });
+    const warning = !isSupabaseConfigured()
+      ? SUPABASE_ENV_WARNING
+      : "No data found for the selected filters. Confirm data is imported into Supabase or widen your date range.";
+
+    return NextResponse.json({ source: "empty", data: null, warning });
   } catch (error) {
     console.error("Dashboard API error:", error);
     return NextResponse.json(

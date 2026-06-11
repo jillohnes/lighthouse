@@ -100,13 +100,15 @@ async function fetchContentProgramRecords(
 export async function fetchContentRecordsForCharts(
   filters: DashboardFilters,
 ): Promise<ContentMetricRecord[]> {
-  const excelRows = loadContentRowsForCharts(filters);
-  if (excelRows.length > 0) return excelRows;
+  if (isSupabaseConfigured()) {
+    const datedRows = await fetchContentProgramRecords(filters, true);
+    if (datedRows.length > 0) return datedRows;
 
-  const datedRows = await fetchContentProgramRecords(filters, true);
-  if (datedRows.length > 0) return datedRows;
+    const undatedRows = await fetchContentProgramRecords(filters, false);
+    if (undatedRows.length > 0) return undatedRows;
+  }
 
-  return fetchContentProgramRecords(filters, false);
+  return loadContentRowsForCharts(filters);
 }
 
 type ContentProgramRow = Pick<
@@ -159,14 +161,14 @@ export async function fetchAllContentFilterRows(): Promise<
 export async function getContentTotals(
   filters: DashboardFilters,
 ): Promise<ContentTotals> {
-  const excelRows = loadContentRowsForCharts(filters);
-  if (excelRows.length > 0) {
-    return sumContentTotals(excelRows);
-  }
-
   const rows = await fetchContentMetricsSafe(filters);
   if (rows.length > 0) {
     return sumContentRows(rows);
+  }
+
+  const excelRows = loadContentRowsForCharts(filters);
+  if (excelRows.length > 0) {
+    return sumContentTotals(excelRows);
   }
 
   return getContentTotalsFromExcel(filters);

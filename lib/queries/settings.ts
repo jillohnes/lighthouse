@@ -4,7 +4,11 @@ import {
   settingsToRows,
   type ProgramSettings,
 } from "@/lib/settings";
-import { getSupabaseAdmin, type KpiTargetRow } from "@/lib/supabase/server";
+import {
+  getSupabaseAdmin,
+  isSupabaseConfigured,
+  type KpiTargetRow,
+} from "@/lib/supabase/server";
 
 const SETTINGS_KEY_PREFIXES = [
   "hct_",
@@ -15,6 +19,8 @@ const SETTINGS_KEY_PREFIXES = [
 ];
 
 export async function getProgramSettings(): Promise<ProgramSettings> {
+  if (!isSupabaseConfigured()) return DEFAULT_PROGRAM_SETTINGS;
+
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase.from("kpi_targets").select("*");
 

@@ -58,7 +58,10 @@ export function Dashboard() {
       const json = await res.json();
       if (!json.data) {
         setData(null);
-        setError("No data found for the selected filters. Try widening your date range or filters.");
+        setError(
+          json.warning ??
+            "No data found for the selected filters. Try widening your date range or filters.",
+        );
       } else {
         setData(json.data);
       }
