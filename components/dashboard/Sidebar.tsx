@@ -11,6 +11,7 @@ import {
   Sparkles,
   Store,
   Target,
+  TrendingUp,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { label: "On Premise", icon: Building2, href: "/on-premise" },
   { label: "Content", icon: Newspaper, href: "/content" },
   { label: "Off Premise", icon: Store, href: "#" },
+  { label: "Business Impact", icon: TrendingUp, href: "/business-impact" },
   { label: "Targets & Pacing", icon: Target, href: "#" },
   { label: "Reports", icon: FileText, href: "#" },
   { label: "AI Insights", icon: Sparkles, href: "#" },

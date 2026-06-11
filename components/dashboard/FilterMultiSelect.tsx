@@ -8,6 +8,7 @@ interface FilterMultiSelectProps {
   value: string[];
   options: string[];
   allLabel: string;
+  menuAlign?: "left" | "right";
   onChange: (value: string[]) => void;
 }
 
@@ -23,6 +24,7 @@ export function FilterMultiSelect({
   value,
   options,
   allLabel,
+  menuAlign = "left",
   onChange,
 }: FilterMultiSelectProps) {
   const [open, setOpen] = useState(false);
@@ -57,12 +59,12 @@ export function FilterMultiSelect({
   const isAllSelected = value.length === 0;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative min-w-0">
       <label className="sr-only">{label}</label>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-9 min-w-[150px] items-center justify-between gap-2 rounded-md border border-brand/15 bg-white py-0 pl-3 pr-2 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10"
+        className="flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-brand/15 bg-white py-0 pl-3 pr-2 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10"
       >
         <span className="truncate">{getDisplayText(value, allLabel)}</span>
         <ChevronDown
@@ -71,7 +73,11 @@ export function FilterMultiSelect({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 max-h-64 min-w-full overflow-y-auto rounded-md border border-brand/15 bg-white py-1 shadow-lg">
+        <div
+          className={`absolute top-full z-50 mt-1 max-h-64 w-max min-w-full max-w-[min(100vw-2rem,280px)] overflow-y-auto rounded-md border border-brand/15 bg-white py-1 shadow-lg ${
+            menuAlign === "right" ? "right-0" : "left-0"
+          }`}
+        >
           <button
             type="button"
             onClick={selectAll}

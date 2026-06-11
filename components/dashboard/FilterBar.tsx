@@ -46,65 +46,68 @@ export function FilterBar({ filters, onChange, onBatchChange }: FilterBarProps) 
   }
 
   return (
-    <div className="flex items-end gap-3 rounded-lg border border-brand/10 bg-white px-4 py-2.5 shadow-sm">
-      <FilterField label="Brand">
-        <FilterSelect
-          label="Brand"
-          value={filters.brand}
-          options={options.brands}
-          onChange={(v) => onChange("brand", v)}
-        />
-      </FilterField>
+    <div className="w-full min-w-0 rounded-lg border border-brand/10 bg-white px-3 py-2.5 shadow-sm">
+      <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <FilterField label="Brand">
+          <FilterSelect
+            label="Brand"
+            value={filters.brand}
+            options={options.brands}
+            onChange={(v) => onChange("brand", v)}
+          />
+        </FilterField>
 
-      <FilterField label="Activation Type">
-        <FilterMultiSelect
-          label="Activation Type"
-          value={filters.activationType}
-          options={options.activationTypes.filter((o) => o !== "All Activation Types")}
-          allLabel="All Activation Types"
-          onChange={(v) => onChange("activationType", v)}
-        />
-      </FilterField>
+        <FilterField label="Activation Type">
+          <FilterMultiSelect
+            label="Activation Type"
+            value={filters.activationType}
+            options={options.activationTypes.filter((o) => o !== "All Activation Types")}
+            allLabel="All Activation Types"
+            onChange={(v) => onChange("activationType", v)}
+          />
+        </FilterField>
 
-      <FilterField label="Region">
-        <FilterMultiSelect
-          label="Region"
-          value={filters.region}
-          options={options.regions.filter((o) => o !== "All Regions")}
-          allLabel="All Regions"
-          onChange={handleRegionChange}
-        />
-      </FilterField>
+        <FilterField label="Region">
+          <FilterMultiSelect
+            label="Region"
+            value={filters.region}
+            options={options.regions.filter((o) => o !== "All Regions")}
+            allLabel="All Regions"
+            onChange={handleRegionChange}
+          />
+        </FilterField>
 
-      <FilterField label="Market">
-        <FilterMultiSelect
-          label="Market"
-          value={filters.market}
-          options={availableMarkets}
-          allLabel="All Markets"
-          onChange={(v) => onChange("market", v)}
-        />
-      </FilterField>
+        <FilterField label="Market">
+          <FilterMultiSelect
+            label="Market"
+            value={filters.market}
+            options={availableMarkets}
+            allLabel="All Markets"
+            menuAlign="right"
+            onChange={(v) => onChange("market", v)}
+          />
+        </FilterField>
 
-      <div className="mb-2.5 h-5 w-px bg-brand/10" />
+        <FilterField label="From">
+          <DateRangePicker
+            label="Start date"
+            value={filters.startDate}
+            onChange={(d) => onChange("startDate", d)}
+            maxDate={filters.endDate}
+            menuAlign="left"
+          />
+        </FilterField>
 
-      <FilterField label="From">
-        <DateRangePicker
-          label="Start date"
-          value={filters.startDate}
-          onChange={(d) => onChange("startDate", d)}
-          maxDate={filters.endDate}
-        />
-      </FilterField>
-
-      <FilterField label="To">
-        <DateRangePicker
-          label="End date"
-          value={filters.endDate}
-          onChange={(d) => onChange("endDate", d)}
-          minDate={filters.startDate}
-        />
-      </FilterField>
+        <FilterField label="To">
+          <DateRangePicker
+            label="End date"
+            value={filters.endDate}
+            onChange={(d) => onChange("endDate", d)}
+            minDate={filters.startDate}
+            menuAlign="right"
+          />
+        </FilterField>
+      </div>
     </div>
   );
 }

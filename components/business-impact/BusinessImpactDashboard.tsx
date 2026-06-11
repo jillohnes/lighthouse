@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { getDefaultFilters } from "@/lib/data";
 import { formatDateParam, normalizeLocalDate, parseDateParam } from "@/lib/dates";
-import type { DashboardFilters, FilterOptions, OnPremiseData } from "@/lib/types";
+import type { BusinessImpactData, DashboardFilters, FilterOptions } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
 import { FilterBar } from "@/components/dashboard/FilterBar";
-import { PerformanceDrilldown } from "@/components/dashboard/PerformanceDrilldown";
-import { DrinkTrendsAnalysis } from "./DrinkTrendsAnalysis";
-import { SamplingTypeDetail } from "./SamplingTypeDetail";
+import { ActivityDepletionChart } from "./ActivityDepletionChart";
+import { DepletionCorrelationAnalysis } from "./DepletionCorrelationAnalysis";
 
 function buildQueryString(filters: DashboardFilters): string {
   const params = new URLSearchParams({
@@ -30,9 +29,9 @@ function buildQueryString(filters: DashboardFilters): string {
   return params.toString();
 }
 
-export function OnPremiseDashboard() {
+export function BusinessImpactDashboard() {
   const [filters, setFilters] = useState<DashboardFilters>(getDefaultFilters);
-  const [data, setData] = useState<OnPremiseData | null>(null);
+  const [data, setData] = useState<BusinessImpactData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,19 +39,19 @@ export function OnPremiseDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/on-premise?${buildQueryString(currentFilters)}`);
+      const res = await fetch(`/api/business-impact?${buildQueryString(currentFilters)}`);
       const json = await res.json();
       if (!json.data) {
         setData(null);
         setError(
-          "No on-premise data found for the selected filters. Try widening your date range or filters.",
+          "No business impact data found for the selected filters. Try widening your date range or filters.",
         );
       } else {
         setData(json.data);
       }
     } catch {
       setData(null);
-      setError("Failed to load on-premise data.");
+      setError("Failed to load business impact data.");
     } finally {
       setLoading(false);
     }
@@ -101,13 +100,13 @@ export function OnPremiseDashboard() {
   }
 
   return (
-    <AppShell activeNav="On Premise">
+    <AppShell activeNav="Business Impact">
       <header className="min-w-0 shrink-0 border-b border-brand/10 bg-surface px-6 py-4">
         <div className="mb-3">
-          <h2 className="text-xl font-bold text-foreground">On Premise</h2>
+          <h2 className="text-xl font-bold text-foreground">Business Impact</h2>
           <p className="text-xs text-muted">
-            Hybrid Community Teams and Brand Experiences performance, brand
-            sampling, and market conversion analysis.
+            Track sampling and content activity against modeled depletion, and see which
+            brand-market combinations are driving the strongest correlation.
           </p>
         </div>
         <FilterBar
@@ -123,39 +122,18 @@ export function OnPremiseDashboard() {
       <main className="flex-1 overflow-y-auto p-6">
         {loading ? (
           <div className="flex h-64 items-center justify-center text-sm text-brand/60">
-            Loading on-premise data...
+            Loading business impact data...
           </div>
         ) : data ? (
           <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-5">
-              <PerformanceDrilldown
-                title="Performance by Activation Type"
-                monthly={data.byActivationType.monthly}
-                breakdown={data.byActivationType.breakdown}
-                breakdownLabel="By Activation Type"
-                takeaway={data.byActivationType.takeaway}
-                compact
-              />
-              <PerformanceDrilldown
-                title="Performance by Location Type"
-                monthly={data.byLocationType.monthly}
-                breakdown={data.byLocationType.breakdown}
-                breakdownLabel="By Location Type"
-                takeaway={data.byLocationType.takeaway}
-                compact
-              />
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted">
-                Sampling Type Detail
-              </h3>
-              {data.samplingTypes.map((detail) => (
-                <SamplingTypeDetail key={detail.type} detail={detail} />
-              ))}
-            </div>
-
-            <DrinkTrendsAnalysis trends={data.trendAnalysis} />
+            <ActivityDepletionChart
+              data={data.monthlyActivity}
+              takeaway={data.takeaway}
+            />
+            <DepletionCorrelationAnalysis
+              correlations={data.correlations}
+              selectedBrand={data.selectedBrand}
+            />
           </div>
         ) : (
           <div className="flex h-64 items-center justify-center text-sm text-brand/60">

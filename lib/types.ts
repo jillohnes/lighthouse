@@ -261,6 +261,41 @@ export interface ContentDashboardData {
   topCreators: ContentTopCreator[];
 }
 
+export interface BusinessImpactMonthlyPoint {
+  month: string;
+  hctSampling: number;
+  brandLedSampling: number;
+  digitalSampling: number;
+  organicImpressions: number;
+  paidImpressions: number;
+  depletionCases: number;
+}
+
+export interface BrandMarketDepletionCorrelation {
+  brand: string;
+  market: string;
+  activityScore: number;
+  depletionIndex: number;
+  correlationScore: number;
+  activityBreakdown: {
+    hctSamples: number;
+    brandLedSamples: number;
+    digitalSamples: number;
+    organicImpressions: number;
+    paidImpressions: number;
+  };
+  insight: string;
+}
+
+export interface BusinessImpactData {
+  selectedBrand: string;
+  monthlyActivity: BusinessImpactMonthlyPoint[];
+  takeaway: string;
+  correlations: BrandMarketDepletionCorrelation[];
+  strongCorrelations: BrandMarketDepletionCorrelation[];
+  weakCorrelations: BrandMarketDepletionCorrelation[];
+}
+
 export interface OnPremiseData {
   byActivationType: PerformanceDrilldownData;
   byLocationType: PerformanceDrilldownData;

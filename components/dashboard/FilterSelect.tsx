@@ -16,12 +16,12 @@ export function FilterSelect<T extends string>({
   onChange,
 }: FilterSelectProps<T>) {
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <label className="sr-only">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className="h-9 min-w-[160px] appearance-none rounded-md border border-brand/15 bg-white py-0 pl-3 pr-8 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10"
+        className="h-9 w-full min-w-0 appearance-none rounded-md border border-brand/15 bg-white py-0 pl-3 pr-8 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:border-brand/40 focus:outline-none focus:ring-2 focus:ring-brand/10"
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>

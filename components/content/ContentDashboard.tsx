@@ -104,7 +104,7 @@ export function ContentDashboard() {
 
   return (
     <AppShell activeNav="Content">
-      <header className="shrink-0 border-b border-brand/10 bg-surface px-6 py-4">
+      <header className="min-w-0 shrink-0 border-b border-brand/10 bg-surface px-6 py-4">
         <div className="mb-3">
           <h2 className="text-xl font-bold text-foreground">Content</h2>
           <p className="text-xs text-muted">

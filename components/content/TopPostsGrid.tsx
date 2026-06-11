@@ -1,8 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import { Camera, Music2 } from "lucide-react";
 import type { ContentTopPost } from "@/lib/types";
 
 interface TopPostsGridProps {
@@ -27,46 +25,17 @@ function PostCard({
   post: ContentTopPost;
   rank: number;
 }) {
-  const [imageFailed, setImageFailed] = useState(false);
-
   return (
     <article className="flex flex-col overflow-hidden rounded-lg border border-brand/10 bg-surface-raised shadow-sm">
       <div className="relative aspect-[9/14] w-full overflow-hidden bg-black">
-        {imageFailed ? (
-          <div
-            className="absolute inset-0"
-            style={{ background: post.imageGradient }}
-          />
-        ) : (
-          <Image
-            src={post.imageUrl}
-            alt={`${post.brand} ${post.contentType} by ${post.creator}`}
-            fill
-            sizes="(max-width: 1280px) 20vw, 200px"
-            className="object-cover"
-            onError={() => setImageFailed(true)}
-          />
-        )}
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-
-        <span className="absolute left-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-bold text-white">
-          #{rank}
-        </span>
-        <span className="absolute right-2 top-2 rounded bg-white/90 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-brand">
-          {post.contentType}
-        </span>
-
-        <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between">
-          <span className="truncate text-[10px] font-semibold text-white drop-shadow">
-            {post.brand}
-          </span>
-          {post.platform === "tiktok" ? (
-            <Music2 className="h-3.5 w-3.5 shrink-0 text-white/90" />
-          ) : (
-            <Camera className="h-3.5 w-3.5 shrink-0 text-white/90" />
-          )}
-        </div>
+        <Image
+          src={post.imageUrl}
+          alt={`${post.brand} ${post.contentType} reel by ${post.creator}`}
+          fill
+          sizes="(max-width: 1280px) 20vw, 200px"
+          className="object-cover"
+          priority={rank <= 5}
+        />
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-2.5">
@@ -119,7 +88,7 @@ export function TopPostsGrid({ posts }: TopPostsGridProps) {
         Top 10 Performing Posts
       </p>
       <p className="mb-4 text-[11px] text-muted">
-        Balanced by high impressions and engagement — brand-relevant post imagery
+        Balanced by high impressions and engagement — reel stills from top creators
       </p>
 
       <div className="grid grid-cols-5 gap-3">

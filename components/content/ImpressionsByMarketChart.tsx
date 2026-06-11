@@ -30,7 +30,7 @@ export function ImpressionsByMarketChart({ data }: ImpressionsByMarketChartProps
         Impressions by Market
       </p>
       <p className="mb-3 text-[11px] text-muted">
-        Organic and paid impressions across your markets
+        Organic and paid impressions by market — illustrative demo data with varied totals and mix
       </p>
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -47,6 +47,7 @@ export function ImpressionsByMarketChart({ data }: ImpressionsByMarketChartProps
               height={52}
             />
             <YAxis
+              domain={[0, "auto"]}
               tick={{ fontSize: 9, fill: CHART_AXIS_COLOR }}
               axisLine={false}
               tickLine={false}

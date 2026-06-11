@@ -12,6 +12,7 @@ interface DateRangePickerProps {
   onChange: (date: Date) => void;
   minDate?: Date;
   maxDate?: Date;
+  menuAlign?: "left" | "right";
 }
 
 export function DateRangePicker({
@@ -20,6 +21,7 @@ export function DateRangePicker({
   onChange,
   minDate,
   maxDate,
+  menuAlign = "right",
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -35,19 +37,25 @@ export function DateRangePicker({
   }, []);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0">
       <button
         type="button"
         aria-label={label}
         onClick={() => setOpen(!open)}
-        className="flex h-9 min-w-[132px] items-center gap-2 whitespace-nowrap rounded-md border border-brand/15 bg-white px-3 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:outline-none focus:ring-2 focus:ring-brand/10"
+        className="flex h-9 w-full min-w-0 items-center gap-1.5 rounded-md border border-brand/15 bg-white px-2.5 text-sm font-medium text-foreground transition-colors hover:border-brand/30 focus:outline-none focus:ring-2 focus:ring-brand/10"
       >
         <Calendar className="h-3.5 w-3.5 shrink-0 text-brand/40" />
-        <span className="flex-1 text-left">{format(value, "MMM d, yyyy")}</span>
+        <span className="min-w-0 flex-1 truncate text-left">
+          {format(value, "MMM d, yyyy")}
+        </span>
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-brand/40" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 rounded-lg border border-brand/10 bg-white p-3 shadow-lg">
+        <div
+          className={`absolute top-full z-50 mt-1.5 rounded-lg border border-brand/10 bg-white p-3 shadow-lg ${
+            menuAlign === "right" ? "right-0" : "left-0"
+          }`}
+        >
           <DayPicker
             mode="single"
             selected={value}

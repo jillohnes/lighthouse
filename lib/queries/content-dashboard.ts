@@ -3,8 +3,9 @@ import { getContentProgramMonthLabel } from "@/lib/content-metrics";
 import {
   buildSyntheticBrandSentiment,
   buildSyntheticEngRateByMarket,
+  buildSyntheticImpressionsByMarket,
   getPostGradient,
-  getPostImageUrl,
+  getShowcasePost,
 } from "@/lib/content-synthetic";
 import { fetchContentRecordsForCharts } from "@/lib/queries/content";
 import type {
@@ -13,26 +14,6 @@ import type {
   ContentTopPost,
   DashboardFilters,
 } from "@/lib/types";
-
-function groupImpressionsByMarket(rows: ContentMetricRecord[]) {
-  const byMarket = new Map<string, { organic: number; paid: number }>();
-
-  for (const row of rows) {
-    const existing = byMarket.get(row.market) ?? { organic: 0, paid: 0 };
-    existing.organic += row.organic_impressions;
-    existing.paid += row.paid_impressions;
-    byMarket.set(row.market, existing);
-  }
-
-  return Array.from(byMarket.entries())
-    .map(([market, values]) => ({
-      market,
-      organic: Math.round(values.organic),
-      paid: Math.round(values.paid),
-      total: Math.round(values.organic + values.paid),
-    }))
-    .sort((a, b) => b.total - a.total);
-}
 
 function postScore(row: ContentMetricRecord): number {
   const impressions = row.organic_impressions + row.paid_impressions;
@@ -52,21 +33,24 @@ function buildTopPosts(rows: ContentMetricRecord[]): ContentTopPost[] {
           : "instagram";
 
       const id = `${row.handle}-${row.metric_date}-${index}`;
+      const showcase = getShowcasePost(index);
+      const brand = showcase?.brand ?? row.product_brand;
+
       return {
         id,
-        title: `${row.product_brand} ${row.content_type} — ${row.market}`,
+        title: `${brand} ${row.content_type} — ${row.market}`,
         creator: row.hct_rep,
         handle: row.handle,
         market: row.market,
-        brand: row.product_brand,
+        brand,
         contentType: row.content_type,
         organicImpressions: organic,
         paidImpressions: paid,
         engRate: row.avg_eng_rate,
         ctr: row.ctr_results,
-        imageGradient: getPostGradient(row.product_brand),
-        imageUrl: getPostImageUrl(row.product_brand, id),
-        platform,
+        imageGradient: getPostGradient(brand),
+        imageUrl: showcase?.imageUrl ?? "/content-posts/post-01-guinness.png",
+        platform: showcase?.platform ?? platform,
       };
     });
 }
@@ -172,7 +156,7 @@ export async function getContentDashboardData(
   const brands = [...new Set(rows.map((row) => row.product_brand).filter(Boolean))].sort();
 
   return {
-    impressionsByMarket: groupImpressionsByMarket(rows),
+    impressionsByMarket: buildSyntheticImpressionsByMarket(markets),
     engRateByMarket: buildSyntheticEngRateByMarket(markets),
     sentimentByBrand: buildSyntheticBrandSentiment(
       markets,
